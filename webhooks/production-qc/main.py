@@ -6,9 +6,8 @@ import xmlrpc.client
 import os
 import secrets
 
-app = FastAPI(title="Odoo Webhook Integration")
+app = FastAPI(title="Odoo Production & QC Webhook")
 
-# === Configuration ===
 ODOO_CONFIG = {
     'url': os.getenv('ODOO_URL', 'https://your-odoo-instance.com'),
     'db': os.getenv('ODOO_DB', 'production'),
@@ -17,8 +16,6 @@ ODOO_CONFIG = {
 }
 
 EXPECTED_API_KEY = os.getenv('API_KEY', 'your-secret-api-key')
-
-# === Data Models ===
 
 class ProductionData(BaseModel):
     work_order_id: str
@@ -46,8 +43,6 @@ class QCData(BaseModel):
     timestamp: datetime
     measurements: Optional[List[MeasurementData]] = None
     notes: Optional[str] = None
-
-# === Odoo Helper Functions ===
 
 def get_odoo_common():
     return xmlrpc.client.ServerProxy(f'{ODOO_CONFIG["url"]}/xmlrpc/2/common')
@@ -84,8 +79,6 @@ def find_record(model, domain, fields=None):
         {'fields': fields or [], 'limit': 1}
     )
     return results[0] if results else None
-
-# === Webhook Endpoints ===
 
 @app.post("/webhook/production")
 async def production_webhook(data: ProductionData, x_api_key: str = Header(...)):
@@ -152,7 +145,6 @@ async def production_webhook(data: ProductionData, x_api_key: str = Header(...))
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/webhook/qc")
 async def qc_webhook(data: QCData, x_api_key: str = Header(...)):
@@ -227,7 +219,6 @@ async def qc_webhook(data: QCData, x_api_key: str = Header(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.get("/health")
 async def health_check():
