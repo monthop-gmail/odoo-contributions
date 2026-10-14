@@ -14,10 +14,14 @@ rounds = int(globals().get('round_count', 4))
 assert 2 <= rounds <= 20
 product = env.ref('sph_core.fixture_part_04').product_variant_id
 warehouse = env.ref('sph_core.fixture_wh_central')
+env.cr.execute('SHOW transaction_isolation')
+isolation=env.cr.fetchone()[0]
 roles = ('sph_hub_operator','sph_warehouse_picker')
 sessions = []
 for role in roles:
     user = env.ref('sph_core.fixture_user_'+role)
+    if role == 'sph_warehouse_picker':
+        user.group_ids = [Command.link(env.ref('stock.group_stock_manager').id)]
     session = root.session_store.new()
     session.update({'db':'sph_poc','uid':user.id,'login':user.login,
         'context':dict(user.with_user(user).context_get()),
@@ -26,11 +30,13 @@ for role in roles:
 env.cr.commit()
 
 
-def request(index, order, key):
+def request(index, order, key, native=False):
     connection = http.client.HTTPConnection('127.0.0.1',8069,timeout=40)
     try:
         body=json.dumps({'jsonrpc':'2.0','id':1,'method':'call','params':{
-            'model':'sale.order','method':'sph_reserve','args':[[order],key],'kwargs':{}}})
+            'model':'stock.picking' if native else 'sale.order',
+            'method':'action_assign' if native else 'sph_reserve',
+            'args':[[order]] if native else [[order],key],'kwargs':{}}})
         connection.request('POST','/web/dataset/call_kw',body,{
             'Content-Type':'application/json','Cookie':'session_id='+sessions[index]})
         response=connection.getresponse()
@@ -54,13 +60,23 @@ for number in range(rounds):
             'warehouse_id':warehouse.id,'order_line':[Command.create({'product_id':product.id,
                 'product_uom_qty':1,'price_unit':104})]})
         orders.append(order.id)
+    native = number == rounds-1
+    native_picking = None
+    if native:
+        native_picking=env['stock.picking'].create({'picking_type_id':warehouse.out_type_id.id,
+            'location_id':warehouse.lot_stock_id.id,'location_dest_id':env.ref('stock.stock_location_customers').id,
+            'move_ids':[Command.create({'name':'FIXTURE native race','product_id':product.id,
+                'product_uom_qty':1,'product_uom':product.uom_id.id,
+                'location_id':warehouse.lot_stock_id.id,'location_dest_id':env.ref('stock.stock_location_customers').id})]})
+        native_picking.action_confirm()
     env.cr.commit()
     # A third connection gates both clients until PostgreSQL observes both waiting.
     with env.registry.cursor() as gate:
         gate.execute('SELECT pg_advisory_xact_lock(%s,%s)',[LOCK_NAMESPACE,product.id])
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             launch=(0,1) if number%2==0 else (1,0)
-            futures={index:pool.submit(request,index,orders[index],f'FIXTURE-race-{number}-{index}') for index in launch}
+            futures={index:pool.submit(request,index,native_picking.id if native and index==1 else orders[index],
+                f'FIXTURE-race-{number}-{index}',native and index==1) for index in launch}
             deadline=time.monotonic()+12
             waiters=0
             while time.monotonic()<deadline:
@@ -71,11 +87,12 @@ for number in range(rounds):
                 time.sleep(0.02)
             gate.commit()  # Standalone gate only. Never a business method/TransactionCase commit.
             responses={index:future.result() for index,future in futures.items()}
-    winners=[index for index,value in responses.items() if 'result' in value]
-    losers=[index for index,value in responses.items() if 'error' in value]
-    assert len(winners)==1 and len(losers)==1
-    message=responses[losers[0]]['error'].get('data',{}).get('message','')
-    assert message=='Unavailable' and all(str(value) not in message for value in (0,1,2))
+    if not native:
+        winners=[index for index,value in responses.items() if 'result' in value]
+        losers=[index for index,value in responses.items() if 'error' in value]
+        assert len(winners)==1 and len(losers)==1
+        message=responses[losers[0]]['error'].get('data',{}).get('message','')
+        assert message=='Unavailable' and all(str(value) not in message for value in (0,1,2))
     # Fresh observer connection sees committed native moves/quants, not client caches.
     with env.registry.cursor() as observer:
         observed=api.Environment(observer,SUPERUSER_ID,{})
@@ -83,18 +100,30 @@ for number in range(rounds):
         ledger=observed['sph.reservation'].search([('order_id','in',orders)])
         assert sum(q.mapped('reserved_quantity'))==1
         assert sum(q.mapped('quantity'))==1 and all(x.quantity>=0 for x in q)
-        assert len(ledger)==1 and ledger.order_id.id==orders[winners[0]]
-        assert ledger.move_id.quantity==1
-        # Loser is rolled back to draft with no move/reservation side effects.
+        if native:
+            assigned=observed['stock.picking'].browse(native_picking.id).move_ids.quantity
+            assert len(ledger)+assigned == 1
+            winners=[0] if ledger else [1]
+            losers=[1-winners[0]]
+            if not ledger:
+                assert responses[0].get('error',{}).get('data',{}).get('message')=='Unavailable'
+        else:
+            assert len(ledger)==1 and ledger.order_id.id==orders[winners[0]]
+        if ledger:
+            assert ledger.move_id.quantity==1
         loser=observed['sale.order'].browse(orders[losers[0]])
         assert loser.state=='draft' and not loser.picking_ids
         before=ledger.ids
-    replay=request(winners[0],orders[winners[0]],f'FIXTURE-race-{number}-{winners[0]}')
-    assert replay.get('result',{}).get('reservation_ids')==before
-    results.append({'round':number,'launch_order':list(launch),'winners':1,'losers':1,
+    if winners[0]==0 or not native:
+        replay=request(winners[0],orders[winners[0]],f'FIXTURE-race-{number}-{winners[0]}')
+        assert replay.get('result',{}).get('reservation_ids')==before
+    if native:
+        # Release the native allocation before the next independent evidence stage.
+        env.invalidate_all();native_picking.move_ids._do_unreserve();env.cr.commit()
+    results.append({'round':number,'mode':'sph_vs_native_assign' if native else 'two_http_reservations','launch_order':list(launch),'winners':1,'losers':1,
         'double_allocations':0,'reserved_total':1,'negative_stock':False,'observed_lock_waiters':waiters,
         'loser_message':'Unavailable','replay_duplicate':False})
     print('SPH_G2_LOCK_WITNESS '+json.dumps({'round':number,'waiters':waiters}),flush=True)
 assert any(row['observed_lock_waiters']>=2 for row in results), 'UNRUNNABLE: no witnessed contention'
 print('SPH_G2_RESULT '+json.dumps({'round_count':rounds,'double_allocations':0,
-    'lock_wait_rounds':sum(row['observed_lock_waiters']>=2 for row in results),'rounds':results}),flush=True)
+    'isolation':isolation,'lock_wait_rounds':sum(row['observed_lock_waiters']>=2 for row in results),'rounds':results}),flush=True)

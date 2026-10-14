@@ -28,7 +28,8 @@ def execute():
     stats=json.loads(final[-1].split(' ',1)[1])
     if not stats['lock_wait_rounds']:
         raise Unrunnable('No witnessed lock contention')
-    logs=subprocess.run(DC+['logs','--no-color','odoo'],text=True,capture_output=True,check=True).stdout
+    logs_result=subprocess.run(DC+['logs','--no-color','odoo'],text=True,capture_output=True,check=True)
+    logs=logs_result.stdout+logs_result.stderr
     lock_lines=[line for line in logs.splitlines() if 'SPH_LOCK_WAIT:' in line]
     if not lock_lines:
         raise Unrunnable('No server-side lock witness')
@@ -38,6 +39,6 @@ def execute():
     pins=json.loads((ROOT/'version-pins.json').read_text())
     sha=subprocess.run(['git','rev-parse','HEAD'],cwd=ROOT,text=True,capture_output=True,check=True).stdout.strip()
     (evidence/'manifest.json').write_text(json.dumps({'scope':'SYNTHETIC ASSUMPTION: G2 committed live HTTP race',
-        'commit':sha,'round_count':count,'isolation':'repeatable read','odoo':pins['odoo'],
+        'commit':sha,'round_count':count,'isolation':stats['isolation'],'odoo':pins['odoo'],
         'postgres':pins['postgres'],'race':stats},indent=2)+'\n')
     print('g2_race stats: '+json.dumps({key:stats[key] for key in ('round_count','double_allocations','lock_wait_rounds')}))
