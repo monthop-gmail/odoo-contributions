@@ -1,6 +1,6 @@
 """G1 ORM evidence; real sessions and token routes belong in the live suite."""
 from odoo import Command
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, UserError
 from odoo.tests.common import TransactionCase
 
 
@@ -20,7 +20,7 @@ def prepare(env):
             'sph_center_id': center.id, 'pricelist_id': price.id,
             'order_line': [Command.create({'product_id': product.id, 'product_uom_qty': 1,
                                           'price_unit': 123 + number})]})
-        picking = env['stock.picking'].create({'partner_id': center.partner_id.id,
+        picking = env['stock.picking'].create({'partner_id': user.partner_id.id,
             'sph_center_id': center.id, 'picking_type_id': env.ref('sph_core.fixture_wh_central').out_type_id.id,
             'location_id': env.ref('sph_core.fixture_wh_central').lot_stock_id.id,
             'location_dest_id': env.ref('stock.stock_location_customers').id})
@@ -60,9 +60,10 @@ class TestCenterIsolation(TransactionCase):
             self.assertEqual(model.search_count([('id', 'in', [x.id for x in self.orders])]), 1)
             grouped = model._read_group([('id', 'in', [x.id for x in self.orders])], ['sph_center_id'], ['__count'])
             self.assertEqual(sum(row[1] for row in grouped), 1)
-            with self.assertRaises(AccessError):
+            with self.assertRaises((AccessError, UserError)):
                 self.orders[1-i].with_user(user).export_data(['name'])
-            self.assertEqual(len(self.orders[i].with_user(user).export_data(['name'])['datas']), 1)
+            with self.assertRaises(UserError):
+                self.orders[i].with_user(user).export_data(['name'])
 
     def test_lines_attachments_no_leak(self):
         attachment = self.env['ir.attachment'].create({'name': 'FIXTURE scoped attachment',

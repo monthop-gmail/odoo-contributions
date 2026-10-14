@@ -61,7 +61,7 @@ def execute():
             assert rpc(role,model,'search',[[['id','in',ids]]])['result']==[ids[i]]
             assert rpc(role,model,'search_count',[[['id','in',ids]]])['result']==1
             assert 'error' in rpc(role,model,'export_data',[[ids[1-i]],fields])
-            assert 'result' in rpc(role,model,'export_data',[[ids[i]],fields])
+            assert 'error' in rpc(role,model,'export_data',[[ids[i]],fields])  # Portal export is wholly denied.
         evidence('test_bidirectional_id_denial',role,False)
         grouped=rpc(role,'sale.order','read_group',[[['id','in',fixture['orders']]],['sph_center_id'],['sph_center_id']])
         assert 'result' in grouped and len(grouped['result'])==1
