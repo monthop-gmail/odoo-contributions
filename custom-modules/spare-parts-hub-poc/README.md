@@ -158,3 +158,43 @@ portal URLs/reports, attachment tokens, anonymous access and next-request revoca
 Sanitized G1 access matrix, rule inventory and JUnit files go into `evidence/`.
 G1 acceptance requires the real live matrix to pass on the exact commit. G2 race
 remains explicitly UNRUNNABLE/SKIP; G2-G4 have not passed.
+
+## B4c reservation contract (synthetic fixture scope)
+
+The human hub operator or picker invokes one `sale.order.sph_reserve(request_key,
+allow_partial=False)` RPC. Bot membership always denies this method, even with
+additional native groups. The server checks read authority and uses the order's
+center and the fixed fixture central warehouse. Products are untracked fixtures;
+no substitution or alternate location is selected. Central outgoing operations
+use manual reservation in the seed.
+
+The method locks the order for request replay, takes transaction-held product
+advisory locks (including absent quant rows), then locks every matching quant row
+in ID order before availability checks and native move assignment. Native quant
+updates participate in the same advisory/row lock protocol. No reserve method
+commits; Odoo's HTTP transaction owns atomic commit/whole-request retries. FCFS
+means serialized confirmation at the stock lock; simultaneous arrivals have no
+invented center priority.
+
+All-or-nothing is the default. Explicit partial allocation retains outstanding
+demand, records a backorder amount and uses native delivery backorders. Reservations
+expire after 48 hours (FIXTURE policy), with a directly callable private cron
+method because harness cron is off. Expired requests cannot replay into a fresh
+reservation. Native quant constraints reject negative/over-reserved fixture stock;
+SPH delivery validation rejects quantities above the recorded reservation limit.
+Unavailable stock errors expose no quantities.
+
+The bound TransactionCase tests cover human/bot scope, readback, rollback, replay,
+reserve beyond free stock, over-delivery, partial delivery/backorder, frozen-time
+expiry and native negative-quant refusal. They never race or commit.
+
+`g2_race` runs a standalone Odoo-shell script against the running committed DB,
+using two independent HTTP clients, a third PostgreSQL gate/observer, and alternating
+launch order. The last round also competes with native `action_assign`. Default
+`SPH_RACE_ROUNDS=4` is a synthetic test parameter, not a business SLA. PostgreSQL
+lock waiters plus server `SPH_LOCK_WAIT` lines are required; missing contention is
+UNRUNNABLE/SKIP with a nonzero job result. Fresh committed observations reconcile
+quants, winning moves/ledger, loser rollback and replay. `manifest.json` records
+round count, actual transaction isolation, commit and pinned runtime; G2 request
+statistics and lock witness logs stay in the synthetic evidence bundle.
+G2 acceptance requires the real race on the exact commit. G3 and G4 remain pending.
