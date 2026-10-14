@@ -2,6 +2,7 @@
 import csv
 import http.client
 import json
+import re
 import subprocess
 import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
@@ -15,6 +16,8 @@ def setup(revoke=False):
         ['--no-http', '--log-level=error'], input=code, text=True, capture_output=True)
     if result.returncode:
         # Do not echo IPC stdout: it contains ephemeral session/share tokens.
+        locations = re.findall(r'live_setup.py[^\n]*line (\d+)', result.stderr)
+        print('G1 setup failure location: ' + (locations[-1] if locations else 'bootstrap'))
         raise RuntimeError('G1 disposable fixture setup failed')
     return json.loads(result.stdout.strip().splitlines()[-1])
 
