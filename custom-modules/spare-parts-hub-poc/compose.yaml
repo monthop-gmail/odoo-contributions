@@ -1,0 +1,69 @@
+{
+  "services": {
+    "postgres": {
+      "image": "docker.io/library/postgres:16.15-bookworm@sha256:ec9f656f17c8b4dfebf49e58cf5c46d493d4846d4ea6d8b85d0637f68ee33bfc",
+      "platform": "linux/amd64",
+      "environment": {
+        "POSTGRES_USER": "odoo",
+        "POSTGRES_DB": "postgres",
+        "POSTGRES_HOST_AUTH_METHOD": "trust"
+      },
+      "tmpfs": [
+        "/var/lib/postgresql/data"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "pg_isready -U odoo -d postgres"
+        ],
+        "interval": "2s",
+        "timeout": "5s",
+        "retries": 30
+      }
+    },
+    "odoo": {
+      "image": "docker.io/library/odoo:19.0-20260926@sha256:22bd89f3d205e59c24dbb716943dcb8cd89ea090ed4d32ce1bfdcf087fafc5df",
+      "platform": "linux/amd64",
+      "entrypoint": [
+        "odoo"
+      ],
+      "command": [
+        "--db_host=postgres",
+        "--db_user=odoo",
+        "--db_password=",
+        "--database=sph_poc",
+        "--db-filter=^sph_poc$",
+        "--no-database-list",
+        "--addons-path=/usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons",
+        "--data-dir=/var/lib/odoo",
+        "--workers=0",
+        "--max-cron-threads=0",
+        "--http-interface=0.0.0.0"
+      ],
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "ports": [
+        "127.0.0.1:18069:8069"
+      ],
+      "volumes": [
+        "./addons:/mnt/extra-addons:ro",
+        "./scripts:/opt/sph/scripts:ro",
+        "odoo-data:/var/lib/odoo"
+      ],
+      "depends_on": {
+        "postgres": {
+          "condition": "service_healthy"
+        }
+      }
+    }
+  },
+  "networks": {
+    "default": {
+      "internal": true
+    }
+  },
+  "volumes": {
+    "odoo-data": {}
+  }
+}

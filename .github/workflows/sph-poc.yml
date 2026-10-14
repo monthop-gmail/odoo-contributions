@@ -1,0 +1,45 @@
+name: SPH pinned Odoo 19 CE harness
+
+on:
+  push:
+    branches: [sph/poc]
+    paths:
+      - 'custom-modules/spare-parts-hub-poc/**'
+      - '.github/workflows/sph-poc.yml'
+  pull_request:
+    branches: [sph/poc]
+    paths:
+      - 'custom-modules/spare-parts-hub-poc/**'
+      - '.github/workflows/sph-poc.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: custom-modules/spare-parts-hub-poc
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Static pins and drift negative controls
+        run: |
+          python3 scripts/check_pins.py
+          python3 scripts/test_pin_guard.py
+      - name: Clean module install and smoke test
+        run: python3 scripts/harness.py test
+      - name: Always remove this harness's containers and volumes
+        if: always()
+        run: python3 scripts/harness.py down
+      - name: Preserve version metadata and synthetic test logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sph-harness-evidence
+          path: custom-modules/spare-parts-hub-poc/evidence/
+          if-no-files-found: ignore
+          retention-days: 7

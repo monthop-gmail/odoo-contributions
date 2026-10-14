@@ -1,0 +1,3 @@
+# No additional Python packages: sph_core uses only Odoo's pinned runtime.
+# The complete image distribution inventory is in runtime-python.lock.
+# Do not pip-install or resolve packages at container startup.

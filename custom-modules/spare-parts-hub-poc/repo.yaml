@@ -1,0 +1,12 @@
+name: spare-parts-hub-poc
+repository: monthop-gmail/odoo-contributions
+path: custom-modules/spare-parts-hub-poc
+branch: sph/poc
+maintainer: monthop-gmail
+reviewer: monthop-gmail
+license: MIT
+status: poc-infrastructure
+runtime: Odoo 19 Community
+data: synthetic-only
+scope: B0-B3
+acceptance_gates: not-run
