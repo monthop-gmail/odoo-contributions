@@ -77,6 +77,15 @@ actions. It runs static pin checks, negative controls and the same clean
 module-install/smoke harness. Other collection folders do not trigger this CI.
 There is no PR to `main`, deployment job or secret dependency.
 
+After `harness.py up`, CI runs `python3 scripts/live_suite.py` outside Odoo's
+test process, before the unconditional `down`. It writes `evidence/live-suite.xml`:
+`g1_http` checks only the loopback login's HTTP 200; `g2_race` is explicitly
+**SKIP — UNRUNNABLE: not implemented**. A readiness failure exits nonzero and
+still writes JUnit. Green infrastructure CI with this skip is not G1-G3 acceptance.
+Later real HTTP isolation, deny-row assertions and reservation races belong in
+this out-of-process suite, not TransactionCase/HttpCase. See the
+[B3b verification record](docs/b3b-verification.md).
+
 Ignored `evidence/` contains package-version metadata, PostgreSQL version and
 synthetic Odoo logs. CI preserves it for seven days even on failure. Do not add
 tokens, passwords, personal data or private document content to evidence or hub
