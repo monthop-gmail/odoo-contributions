@@ -1,0 +1,5 @@
+# Install/test processes exit after initialization and have no live HTTP service.
+services:
+  odoo:
+    healthcheck:
+      disable: true

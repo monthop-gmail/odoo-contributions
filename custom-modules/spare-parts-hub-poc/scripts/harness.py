@@ -12,6 +12,7 @@ from test_results import validate_test_log
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = "sph-poc-" + hashlib.sha256(str(ROOT).encode()).hexdigest()[:10]
 DC = ["docker", "compose", "--project-name", PROJECT, "--file", str(ROOT / "compose.yaml")]
+ONESHOT_DC = DC + ["--file", str(ROOT / "compose.oneshot.yaml")]
 EVIDENCE = ROOT / "evidence"
 ODOO_ARGS = [
     "--db_host=postgres", "--db_user=odoo", "--db_password=",
@@ -44,7 +45,7 @@ def install(test=False):
     args = ODOO_ARGS + ["--init=sph_core", "--without-demo=all", "--stop-after-init", "--no-http"]
     if test:
         args += ["--test-enable", "--test-tags=/sph_core", "--log-level=test"]
-    result = subprocess.run(DC + ["run", "--rm", "--no-deps", "odoo"] + args,
+    result = subprocess.run(ONESHOT_DC + ["run", "--rm", "--no-deps", "odoo"] + args,
                             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     EVIDENCE.mkdir(exist_ok=True)
     (EVIDENCE / ("odoo-tests.log" if test else "odoo-install.log")).write_text(result.stdout)
