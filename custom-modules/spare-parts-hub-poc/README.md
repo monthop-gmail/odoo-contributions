@@ -34,8 +34,9 @@ filestore volume. The compose project name is derived from this folder's absolut
 path, so cleanup targets only this checkout's harness. Do not run tests against
 a UI instance you want to retain: `test` deliberately resets this project's DB.
 
-The internal Docker network has no external route. PostgreSQL uses trust auth
-only within that disposable network (no password or credential is provisioned).
+PostgreSQL is attached only to the internal backend network and uses trust auth
+there (no password or credential is provisioned). Odoo also has a frontend bridge
+for its loopback-only published port; that bridge is not an outbound firewall.
 Odoo's stock synthetic initialization is not a credential-management system;
 do not expose the service or attach real data. No mail/provider integration is
 configured, cron is disabled, and database listing is disabled. No enterprise

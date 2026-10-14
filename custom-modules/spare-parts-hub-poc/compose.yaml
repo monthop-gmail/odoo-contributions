@@ -19,7 +19,10 @@
         "interval": "2s",
         "timeout": "5s",
         "retries": 30
-      }
+      },
+      "networks": [
+        "backend"
+      ]
     },
     "odoo": {
       "image": "docker.io/library/odoo:19.0-20260926@sha256:22bd89f3d205e59c24dbb716943dcb8cd89ea090ed4d32ce1bfdcf087fafc5df",
@@ -67,13 +70,18 @@
         "timeout": "10s",
         "retries": 20,
         "start_period": "10s"
-      }
+      },
+      "networks": [
+        "backend",
+        "ui"
+      ]
     }
   },
   "networks": {
-    "default": {
+    "backend": {
       "internal": true
-    }
+    },
+    "ui": {}
   },
   "volumes": {
     "odoo-data": {}

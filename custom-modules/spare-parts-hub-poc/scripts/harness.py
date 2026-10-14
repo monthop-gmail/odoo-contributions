@@ -86,8 +86,13 @@ def main():
         if args.action == "up":
             run(DC + ["up", "--detach", "--wait", "--wait-timeout", "120", "odoo"])
             url = "http://127.0.0.1:18069/web/login?db=sph_poc"
-            with urllib.request.urlopen(url, timeout=10) as response:
-                assert response.status == 200, "Loopback UI did not respond"
+            try:
+                with urllib.request.urlopen(url, timeout=10) as response:
+                    assert response.status == 200, "Loopback UI did not respond"
+            except Exception:
+                run(DC + ["ps"])
+                run(DC + ["logs", "--tail", "50", "odoo"])
+                raise
             (EVIDENCE / "ui-startup.json").write_text(
                 json.dumps({"loopback_http_status": 200, "container_health": "healthy"}) + "\n"
             )
