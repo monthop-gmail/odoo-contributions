@@ -9,8 +9,9 @@ No Odoo core or OCA code is copied into this folder; the addon imports Odoo APIs
 
 Synthetic data only: no real parts, prices, centers, people, orders or external
 connections. This is a disposable local/CI harness, not a production deployment.
-Only a skeleton registry/install smoke test exists. Center security, reservations,
-purchasing authority and Flow A+B are later work; **G1-G4 remain NOT RUN**.
+The registry/install smoke test and B4a model/fixture tests exist. Center security,
+reservations, purchasing authority and Flow A+B are later work;
+**G1-G4 remain NOT RUN**.
 
 ## Run
 
@@ -45,8 +46,42 @@ the non-internal `ui` network has outbound egress.
 Odoo's stock synthetic initialization is not a credential-management system;
 do not expose the service or attach real data. No mail/provider integration is
 configured, cron is disabled, and database listing is disabled. No enterprise
-addon is installed. Core dependency tables may exist, but no business seed,
-invoice, payment or live inventory action is implemented.
+addon is installed. The B4a seed below creates synthetic records and starting
+quants only; no invoice, payment or live inventory action is implemented.
+
+## B4a synthetic fixtures
+
+All seed names, identifiers, numbers, tags and quantities are **SYNTHETIC
+ASSUMPTION / FIXTURE**, not business policies or real commercial data. The
+initializer refuses databases other than `sph_poc` and refuses multiple companies.
+It uses stable `sph_core.fixture_*` XML IDs, is covered by a reseed-idempotency
+test, and refuses reseeding stock that already has reservations.
+
+- One renamed FIXTURE company; existing central warehouse plus one owned-center
+  warehouse. This is the provisional D4 model, not a legal-ownership assertion.
+- One owned center, two independent centers and two additional independent
+  centers under the same commercial partner. Center, company, warehouse, partner
+  and explicit user memberships remain separate records/relations.
+- Thirty untracked inventory parts with FIXTURE OEM/alternate identifiers and
+  illustrative fitment tags. Template and variant display-name searches include
+  OEM and alternate numbers. Alternate identifiers are a searchable text field,
+  not a validated external catalog or substitution engine.
+- Two FIXTURE suppliers. Central stock cycles through 8, 3, 0 and 1 units;
+  `fixture_part_04` is a last-unit case. These provide In stock/Low/Out inputs,
+  not an implemented portal band page or reservation mechanism.
+- One FIXTURE user per mentor role (`sph_hub_operator`, `sph_warehouse_picker`,
+  `sph_purchasing_approver`, `sph_center_requester`, `sph_center_receiver`,
+  `sph_bot`). The two center users are portal users with explicit center links.
+  No passwords or API keys are seeded and no invitation/reset mail is requested.
+- Role groups are fixture memberships only. The purchasing approver does not yet
+  receive purchase-manager authority; the bot has neither Settings nor purchase
+  manager rights. Custom center/tag ACLs are administrator-only until B4b.
+- Purchase settings are `two_step` with amount `0`, asserted in the seed tests.
+  This configuration alone does not implement maker/checker or the G3 guards.
+
+New model/seed tests are listed in `expected-tests.json`; the strict harness must
+observe every listed test. Isolation HTTP checks, race and deny-row assertions
+remain in the live-suite workstream, not these TransactionCase fixture tests.
 
 ## Pins and drift checks
 

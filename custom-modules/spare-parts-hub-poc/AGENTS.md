@@ -7,8 +7,9 @@ Reviewer: monthop-gmail
 - Scope: this folder and `.github/workflows/sph-poc.yml` only.
 - MIT applies to original files here only. Do not copy Odoo core/OCA code.
 - Odoo 19 Community only; synthetic data only; no production connections.
-- B0-B3 is infrastructure and one install smoke test. G1-G4 are NOT RUN.
+- B0-B3 infrastructure and B4a models/synthetic seed are authorized. G1-G4 are NOT RUN.
 - No new credentials, secrets, permissions or non-harness deployment.
 - Pin changes must update `version-pins.json` and runtime inventory, then pass
   static checks and the clean disposable harness test. Never skip a mismatch.
-- Keep models/security placeholders empty until later scope is authorized.
+- Center isolation, band pages, reservations and purchasing guards belong to
+  separately sequenced B4b-B4d tasks; do not infer their acceptance from seed tests.
