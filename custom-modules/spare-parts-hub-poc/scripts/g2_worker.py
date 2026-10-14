@@ -67,7 +67,7 @@ for number in range(rounds):
     if native:
         native_picking=env['stock.picking'].create({'picking_type_id':warehouse.out_type_id.id,
             'location_id':warehouse.lot_stock_id.id,'location_dest_id':env.ref('stock.stock_location_customers').id,
-            'move_ids':[Command.create({'name':'FIXTURE native race','product_id':product.id,
+            'move_ids':[Command.create({'product_id':product.id,
                 'product_uom_qty':1,'product_uom':product.uom_id.id,
                 'location_id':warehouse.lot_stock_id.id,'location_dest_id':env.ref('stock.stock_location_customers').id})]})
         native_picking.action_confirm()
