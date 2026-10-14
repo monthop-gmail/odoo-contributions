@@ -30,6 +30,7 @@ class SphCenterFixtures(models.Model):
         central = ensure("fixture_wh_central", "stock.warehouse", {
             "name": "FIXTURE Central Warehouse", "code": "FXC", "company_id": company.id,
         }, central)
+        central.out_type_id.reservation_method = "manual"  # FIXTURE: reserve only through the explicit human operation.
         owned_wh = ensure("fixture_wh_owned", "stock.warehouse", {
             "name": "FIXTURE Owned Warehouse", "code": "FXO", "company_id": company.id,
         })

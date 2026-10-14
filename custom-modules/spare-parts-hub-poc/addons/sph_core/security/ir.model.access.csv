@@ -13,3 +13,4 @@ access_sph_read_stock_picking_group_sph_reader,SPH readonly stock_picking_group_
 access_sph_read_stock_picking_base_group_portal,SPH readonly stock_picking_base_group_portal,stock.model_stock_picking,base.group_portal,1,0,0,0
 access_sph_read_sph_center_group_sph_reader,SPH readonly sph_center_group_sph_reader,model_sph_center,group_sph_reader,1,0,0,0
 access_sph_read_sph_center_base_group_portal,SPH readonly sph_center_base_group_portal,model_sph_center,base.group_portal,1,0,0,0
+access_sph_reservation_admin,SPH reservation admin,model_sph_reservation,base.group_system,1,1,1,1
