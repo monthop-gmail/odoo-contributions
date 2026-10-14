@@ -12,5 +12,14 @@
   "TestCenterIsolation.test_lines_attachments_no_leak",
   "TestCenterIsolation.test_cross_center_share_token",
   "TestCenterIsolation.test_anonymous_revoke_denial",
-  "TestCenterIsolation.test_ai_scope_and_group_union"
+  "TestCenterIsolation.test_ai_scope_and_group_union",
+  "TestAtomicReservation.test_scope_and_ai_denial",
+  "TestAtomicReservation.test_reserve_readback",
+  "TestAtomicReservation.test_failure_rolls_back",
+  "TestAtomicReservation.test_request_replay",
+  "TestAtomicReservation.test_reserve_beyond_free_denied",
+  "TestAtomicReservation.test_delivery_over_reserved_denied",
+  "TestAtomicReservation.test_partial_and_backorder",
+  "TestAtomicReservation.test_expiry_frozen_clock",
+  "TestAtomicReservation.test_native_negative_quant_denied"
 ]

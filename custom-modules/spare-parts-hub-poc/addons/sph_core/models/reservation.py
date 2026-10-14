@@ -68,10 +68,14 @@ class Order(models.Model):
             raise UserError('Unavailable')
         self.env.cr.execute('SELECT id FROM sale_order WHERE id=%s FOR UPDATE', [self.id])
         order = self.sudo()
-        existing = self.env['sph.reservation'].sudo().search([('order_id','=',self.id)])
-        if existing:
-            if all(r.request_key == request_key and r.state == 'active' for r in existing):
-                return {'status':'reserved', 'reservation_ids':existing.ids}
+        previous = self.env['sph.reservation'].sudo().search([
+            ('order_id','=',self.id),('request_key','=',request_key)])
+        if previous:
+            status = previous[0].state
+            if status == 'active':
+                status = 'partial' if any(previous.mapped('backorder_qty')) else 'reserved'
+            return {'status':status, 'reservation_ids':previous.ids}
+        if self.env['sph.reservation'].sudo().search_count([('order_id','=',self.id),('state','=','active')]):
             raise UserError('Unavailable')
         warehouse = self.env.ref('sph_core.fixture_wh_central').sudo()
         lines = order.order_line.filtered(lambda line:not line.display_type)
@@ -84,6 +88,8 @@ class Order(models.Model):
         # Require all-or-nothing unless the human explicitly elects partial allocation.
         for product in lines.product_id:
             demand = sum(lines.filtered(lambda line:line.product_id == product).mapped('product_uom_qty'))
+            if order.state == 'sale':
+                demand = sum(order.picking_ids.move_ids.filtered(lambda m:m.product_id == product and m.state not in ('done','cancel')).mapped('product_uom_qty'))
             quants = lock_stock(self.env, product, warehouse.lot_stock_id)
             free = sum(q.quantity-q.reserved_quantity for q in quants)
             if demand <= 0 or free <= 0 or (not allow_partial and demand > free):
@@ -111,3 +117,43 @@ class Order(models.Model):
             reservations |= reservation
         return {'status':'partial' if any(reservations.mapped('backorder_qty')) else 'reserved',
                 'reservation_ids':reservations.ids}
+
+
+class Quant(models.Model):
+    _inherit = 'stock.quant'
+
+    @api.model
+    def _update_available_quantity(self, product_id, location_id, quantity=False,
+                                   reserved_quantity=False, **kwargs):
+        # Native assignments/mutations participate too, including missing-quant cases.
+        if product_id.sph_fixture and location_id.usage == 'internal':
+            lock_stock(self.env, product_id, location_id)
+        return super()._update_available_quantity(product_id, location_id,
+            quantity=quantity, reserved_quantity=reserved_quantity, **kwargs)
+
+    @api.constrains('quantity','reserved_quantity','product_id','location_id')
+    def _sph_no_negative(self):
+        for quant in self:
+            if quant.product_id.sph_fixture and quant.location_id.usage == 'internal' and (
+                quant.quantity < -0.000001 or quant.reserved_quantity < -0.000001 or
+                quant.reserved_quantity > quant.quantity+0.000001):
+                raise UserError('Unavailable')
+
+
+class Move(models.Model):
+    _inherit = 'stock.move'
+
+    sph_reserved_limit = fields.Float(copy=False)
+    sph_reservation_id = fields.Many2one('sph.reservation', copy=False, ondelete='restrict')
+
+    def _action_done(self, cancel_backorder=False):
+        protected = self.filtered(lambda m:m.picking_id.sph_center_id and m.location_id.usage == 'internal')
+        for move in protected:
+            reservation = move.sph_reservation_id
+            if (not reservation or reservation.state != 'active' or
+                reservation.expires_at <= fields.Datetime.now() or
+                move.quantity > move.sph_reserved_limit+0.000001):
+                raise UserError('Unavailable')
+        result = super()._action_done(cancel_backorder=cancel_backorder)
+        protected.filtered(lambda m:m.state == 'done').sph_reservation_id.write({'state':'done'})
+        return result
