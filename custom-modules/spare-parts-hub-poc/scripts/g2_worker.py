@@ -1,0 +1,100 @@
+"""Standalone Odoo-shell race against the LIVE HTTP server, never a test case.
+SYNTHETIC ASSUMPTION: untracked central last unit; round count is a test parameter.
+"""
+import concurrent.futures
+import http.client
+import json
+import time
+from odoo import api, Command, SUPERUSER_ID
+from odoo.http import root
+from odoo.addons.sph_core.models.reservation import LOCK_NAMESPACE
+
+assert env.cr.dbname == 'sph_poc'
+rounds = int(globals().get('round_count', 4))
+assert 2 <= rounds <= 20
+product = env.ref('sph_core.fixture_part_04').product_variant_id
+warehouse = env.ref('sph_core.fixture_wh_central')
+roles = ('sph_hub_operator','sph_warehouse_picker')
+sessions = []
+for role in roles:
+    user = env.ref('sph_core.fixture_user_'+role)
+    session = root.session_store.new()
+    session.update({'db':'sph_poc','uid':user.id,'login':user.login,
+        'context':dict(user.with_user(user).context_get()),
+        'session_token':user._compute_session_token(session.sid)})
+    root.session_store.save(session); sessions.append(session.sid)
+env.cr.commit()
+
+
+def request(index, order, key):
+    connection = http.client.HTTPConnection('127.0.0.1',8069,timeout=40)
+    try:
+        body=json.dumps({'jsonrpc':'2.0','id':1,'method':'call','params':{
+            'model':'sale.order','method':'sph_reserve','args':[[order],key],'kwargs':{}}})
+        connection.request('POST','/web/dataset/call_kw',body,{
+            'Content-Type':'application/json','Cookie':'session_id='+sessions[index]})
+        response=connection.getresponse()
+        return json.loads(response.read())
+    finally: connection.close()
+
+
+results = []
+for number in range(rounds):
+    # Reset through native unreserve/update APIs in a committed setup transaction.
+    env.invalidate_all()
+    old=env['sph.reservation'].search([('move_id.product_id','=',product.id),('state','=','active')])
+    old.move_id._do_unreserve(); old.write({'state':'expired'})
+    quants=env['stock.quant'].search([('product_id','=',product.id),('location_id','=',warehouse.lot_stock_id.id)])
+    assert not any(quants.mapped('reserved_quantity'))
+    env['stock.quant']._update_available_quantity(product,warehouse.lot_stock_id,1-sum(quants.mapped('quantity')))
+    orders=[]
+    for index in range(2):
+        center=env.ref('sph_core.fixture_center_independent_'+('a' if index==0 else 'b'))
+        order=env['sale.order'].create({'partner_id':center.partner_id.id,'sph_center_id':center.id,
+            'warehouse_id':warehouse.id,'order_line':[Command.create({'product_id':product.id,
+                'product_uom_qty':1,'price_unit':104})]})
+        orders.append(order.id)
+    env.cr.commit()
+    # A third connection gates both clients until PostgreSQL observes both waiting.
+    with env.registry.cursor() as gate:
+        gate.execute('SELECT pg_advisory_xact_lock(%s,%s)',[LOCK_NAMESPACE,product.id])
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            launch=(0,1) if number%2==0 else (1,0)
+            futures={index:pool.submit(request,index,orders[index],f'FIXTURE-race-{number}-{index}') for index in launch}
+            deadline=time.monotonic()+12
+            waiters=0
+            while time.monotonic()<deadline:
+                # pg_locks is a live view, independent of MVCC snapshots.
+                gate.execute("SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND classid=%s AND objid=%s AND NOT granted",[LOCK_NAMESPACE,product.id])
+                waiters=gate.fetchone()[0]
+                if waiters>=2: break
+                time.sleep(0.02)
+            gate.commit()  # Standalone gate only. Never a business method/TransactionCase commit.
+            responses={index:future.result() for index,future in futures.items()}
+    winners=[index for index,value in responses.items() if 'result' in value]
+    losers=[index for index,value in responses.items() if 'error' in value]
+    assert len(winners)==1 and len(losers)==1
+    message=responses[losers[0]]['error'].get('data',{}).get('message','')
+    assert message=='Unavailable' and all(str(value) not in message for value in (0,1,2))
+    # Fresh observer connection sees committed native moves/quants, not client caches.
+    with env.registry.cursor() as observer:
+        observed=api.Environment(observer,SUPERUSER_ID,{})
+        q=observed['stock.quant'].search([('product_id','=',product.id),('location_id','=',warehouse.lot_stock_id.id)])
+        ledger=observed['sph.reservation'].search([('order_id','in',orders)])
+        assert sum(q.mapped('reserved_quantity'))==1
+        assert sum(q.mapped('quantity'))==1 and all(x.quantity>=0 for x in q)
+        assert len(ledger)==1 and ledger.order_id.id==orders[winners[0]]
+        assert ledger.move_id.quantity==1
+        # Loser is rolled back to draft with no move/reservation side effects.
+        loser=observed['sale.order'].browse(orders[losers[0]])
+        assert loser.state=='draft' and not loser.picking_ids
+        before=ledger.ids
+    replay=request(winners[0],orders[winners[0]],f'FIXTURE-race-{number}-{winners[0]}')
+    assert replay.get('result',{}).get('reservation_ids')==before
+    results.append({'round':number,'launch_order':list(launch),'winners':1,'losers':1,
+        'double_allocations':0,'reserved_total':1,'negative_stock':False,'observed_lock_waiters':waiters,
+        'loser_message':'Unavailable','replay_duplicate':False})
+    print('SPH_G2_LOCK_WITNESS '+json.dumps({'round':number,'waiters':waiters}),flush=True)
+assert any(row['observed_lock_waiters']>=2 for row in results), 'UNRUNNABLE: no witnessed contention'
+print('SPH_G2_RESULT '+json.dumps({'round_count':rounds,'double_allocations':0,
+    'lock_wait_rounds':sum(row['observed_lock_waiters']>=2 for row in results),'rounds':results}),flush=True)
