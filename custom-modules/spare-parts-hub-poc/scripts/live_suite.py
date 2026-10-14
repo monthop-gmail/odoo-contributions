@@ -9,43 +9,36 @@ JUNIT = ROOT / "evidence/live-suite.xml"
 
 
 def g1_http():
-    """Check only loopback login readiness; no session, data or credentials."""
-    connection = http.client.HTTPConnection("127.0.0.1", 18069, timeout=10)
-    try:
-        connection.request("GET", "/web/login?db=sph_poc")
-        response = connection.getresponse()
-        if response.status != 200:
-            raise RuntimeError(f"Expected HTTP 200, received {response.status}")
-    finally:
-        connection.close()
+    from g1_http import execute
+    execute()
 
 
 def run_suite(junit_path=JUNIT):
-    suite = ET.Element("testsuite", name="SPH live-harness placeholders",
+    suite = ET.Element("testsuite", name="SPH live-harness G1",
                        tests="2", failures="0", errors="0", skipped="1")
     properties = ET.SubElement(suite, "properties")
     ET.SubElement(properties, "property", name="gate_acceptance", value="NOT RUN")
-    ET.SubElement(properties, "property", name="scope", value="B3b infrastructure only")
+    ET.SubElement(properties, "property", name="scope", value="B4b real G1; G2 unimplemented")
     started = time.monotonic()
     readiness = ET.SubElement(suite, "testcase", name="g1_http",
                              classname="sph_live.placeholder")
     failed = False
     try:
         g1_http()
-        print("g1_http: PASS (HTTP readiness only; G1 acceptance NOT RUN)")
+        print("g1_http: PASS (real isolation HTTP matrix)")
     except Exception as error:
         # Do not copy HTTP bodies, exception strings or session data into evidence.
         failed = True
         suite.set("failures", "1")
         ET.SubElement(readiness, "failure", type=type(error).__name__,
-                      message="Loopback login GET did not succeed with HTTP 200")
+                      message="G1 live isolation matrix failed")
         print("g1_http: FAIL (loopback login GET did not succeed with HTTP 200)")
     readiness.set("time", f"{time.monotonic() - started:.6f}")
     race = ET.SubElement(suite, "testcase", name="g2_race",
                         classname="sph_live.placeholder", time="0")
     ET.SubElement(race, "skipped", message="UNRUNNABLE: not implemented")
     print("g2_race: SKIP (UNRUNNABLE: not implemented)")
-    print("G1-G3 acceptance: NOT RUN; placeholders do not satisfy the gates")
+    print("G1 HTTP matrix executed; G2/G3 NOT RUN")
     junit_path = Path(junit_path)
     junit_path.parent.mkdir(parents=True, exist_ok=True)
     ET.indent(suite)
