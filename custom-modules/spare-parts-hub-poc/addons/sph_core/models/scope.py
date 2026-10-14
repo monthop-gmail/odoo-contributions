@@ -32,3 +32,22 @@ class Picking(models.Model):
     _inherit = "stock.picking"
 
     sph_center_id = fields.Many2one("sph.center", check_company=True, index=True)
+
+
+class Binary(models.AbstractModel):
+    _inherit = "ir.binary"
+
+    def _find_record(self, xmlid=None, res_model='ir.attachment', res_id=None,
+                     access_token=None, field=None):
+        # Check linked SPH order before native attachment/share tokens can sudo it.
+        from odoo.exceptions import AccessError
+        record = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else (
+            self.env[res_model].sudo().browse(res_id).exists() if res_id and res_model in self.env else None)
+        document = record
+        if record and record._name == 'ir.attachment' and record.res_model == 'sale.order':
+            document = self.env['sale.order'].sudo().browse(record.res_id).exists()
+        if document and document._name == 'sale.order' and document.sudo().sph_center_id:
+            if self.env.user._is_public() or not self.env.user.active:
+                raise AccessError('Unavailable')
+            document.with_env(self.env).check_access('read')
+        return super()._find_record(xmlid, res_model, res_id, access_token, field)
