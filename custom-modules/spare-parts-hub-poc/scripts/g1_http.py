@@ -3,6 +3,7 @@ import csv
 import http.client
 import json
 import subprocess
+import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
 from pathlib import Path
 from harness import DC, ODOO_ARGS, ROOT
@@ -107,3 +108,9 @@ def execute():
     (directory/'G1-http-results.jsonl').write_text(''.join(json.dumps(row)+'\n' for row in rows))
     with (directory/'G1-access-matrix.csv').open('w') as output:
         writer=csv.DictWriter(output,fieldnames=['test','actor','outcome','result']);writer.writeheader();writer.writerows(rows)
+
+    (directory/'G1-effective-acl-rules.json').write_text(json.dumps(fixture['rules'],indent=2)+'\n')
+    suite=ET.Element('testsuite',name='G1 live access matrix',tests=str(len(rows)),failures='0',errors='0')
+    for row in rows:
+        ET.SubElement(suite,'testcase',name=row['test'],classname=row['actor'])
+    ET.ElementTree(suite).write(directory/'G1-assertions.xml',encoding='utf-8',xml_declaration=True)

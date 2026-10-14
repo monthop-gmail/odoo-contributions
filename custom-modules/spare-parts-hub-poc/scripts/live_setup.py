@@ -35,7 +35,8 @@ else:
             'session_token': user._compute_session_token(session.sid)})
         root.session_store.save(session)
         sessions[role] = session.sid
-    result = {'sessions': sessions, 'orders': [x.id for x in orders],
+    rules = env['ir.rule'].search([('model_id.model', 'in', ['sale.order','sale.order.line','product.pricelist','product.pricelist.item','stock.picking','stock.quant'])])
+    result = {'rules': [{'name': r.name, 'model': r.model_id.model, 'global': r['global'], 'domain': r.domain_force} for r in rules], 'sessions': sessions, 'orders': [x.id for x in orders],
         'names': [x.name for x in orders], 'prices': [123,124],
         'lines': [x.order_line.id for x in orders], 'lists': [x.id for x in lists],
         'items': [x.item_ids.id for x in lists], 'pickings': [x.id for x in pickings],

@@ -2,6 +2,7 @@
 import http.client
 from pathlib import Path
 import time
+import traceback
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +30,9 @@ def run_suite(junit_path=JUNIT):
     except Exception as error:
         # Do not copy HTTP bodies, exception strings or session data into evidence.
         failed = True
+        frames = traceback.extract_tb(error.__traceback__)
+        if frames:
+            print('G1 failure location: ' + Path(frames[-1].filename).name + ':' + str(frames[-1].lineno))
         suite.set("failures", "1")
         ET.SubElement(readiness, "failure", type=type(error).__name__,
                       message="G1 live isolation matrix failed")
