@@ -124,7 +124,8 @@ for number in range(rounds):
         env.invalidate_all();native_picking.move_ids._do_unreserve();env.cr.commit()
     results.append({'round':number,'mode':'sph_vs_native_assign' if native else 'two_http_reservations','launch_order':list(launch),'winners':1,'losers':1,
         'double_allocations':0,'reserved_total':1,'negative_stock':False,'observed_lock_waiters':waiters,
-        'loser_message':'Unavailable','replay_duplicate':False})
+        'loser_message':'native no allocation' if native and winners[0]==0 else 'Unavailable',
+        'replay_duplicate':False})
     print('SPH_G2_LOCK_WITNESS '+json.dumps({'round':number,'waiters':waiters}),flush=True)
 assert any(row['observed_lock_waiters']>=2 for row in results), 'UNRUNNABLE: no witnessed contention'
 print('SPH_G2_RESULT '+json.dumps({'round_count':rounds,'double_allocations':0,
