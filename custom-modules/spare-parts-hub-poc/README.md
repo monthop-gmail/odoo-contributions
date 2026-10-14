@@ -33,10 +33,15 @@ The DB is a tmpfs, lost when its container stops; `down` also removes the
 filestore volume. The compose project name is derived from this folder's absolute
 path, so cleanup targets only this checkout's harness. Do not run tests against
 a UI instance you want to retain: `test` deliberately resets this project's DB.
+After local `up`, always run `python3 scripts/harness.py down` yourself, even
+if a later command fails; only CI guarantees teardown with `if: always()`.
 
 PostgreSQL is attached only to the internal backend network and uses trust auth
 there (no password or credential is provisioned). Odoo also has a frontend bridge
 for its loopback-only published port; that bridge is not an outbound firewall.
+The `up` database includes Odoo's default admin account: loopback and synthetic
+data only. Never expose that port or attach real data. The `odoo` container on
+the non-internal `ui` network has outbound egress.
 Odoo's stock synthetic initialization is not a credential-management system;
 do not expose the service or attach real data. No mail/provider integration is
 configured, cron is disabled, and database listing is disabled. No enterprise
@@ -69,6 +74,11 @@ update the recorded versions/inventory and hashes together, and rerun the clean
 test. No automatic pin refresh is performed; never weaken the checks for a green run.
 
 ## CI and evidence
+
+`expected-tests.json` is the binding list of Odoo tests that must execute. Add
+new tests there as they land. The harness parses every summary and rejects any
+nonzero failure/error count, any ERROR/FAIL line, missing summaries or missing
+listed tests. Runner controls include the former false-pass case `10 failed`.
 
 `.github/workflows/sph-poc.yml` runs on pushes to `sph/poc` and PRs **into
 `sph/poc`**, filtered to this folder and that workflow file. It has only

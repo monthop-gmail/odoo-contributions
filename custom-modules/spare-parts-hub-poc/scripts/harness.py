@@ -3,10 +3,11 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import re
 import subprocess
 import sys
 import urllib.request
+
+from test_results import validate_test_log
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = "sph-poc-" + hashlib.sha256(str(ROOT).encode()).hexdigest()[:10]
@@ -50,10 +51,8 @@ def install(test=False):
     print(result.stdout, end="", flush=True)
     result.check_returncode()
     if test:
-        assert "TestSPHSkeleton.test_odoo19_community_dependency_registry" in result.stdout, (
-            "Smoke test was not executed"
-        )
-        assert re.search(r"0 failed, 0 error\(s\)", result.stdout), "No passing Odoo test summary"
+        expected = json.loads((ROOT / "expected-tests.json").read_text())
+        validate_test_log(result.stdout, expected)
 
 
 def main():
