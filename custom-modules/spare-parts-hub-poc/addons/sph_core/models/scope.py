@@ -57,3 +57,32 @@ class Binary(models.AbstractModel):
                 raise AccessError('Unavailable')
             document.with_env(self.env).check_access('read')
         return super()._find_record(xmlid, res_model, res_id, access_token, field)
+
+
+class SaleThread(models.Model):
+    _inherit = 'sale.order'
+
+    def _get_thread_with_access(self, thread_id, mode='read', **kwargs):
+        from odoo.exceptions import AccessError
+        document = self.browse(thread_id)
+        if document.sudo().sph_center_id:
+            if self.env.user._is_public() or not self.env.user.active:
+                raise AccessError('Unavailable')
+            document.check_access(mode)
+        return super()._get_thread_with_access(thread_id, mode=mode, **kwargs)
+
+
+class Attachment(models.Model):
+    _inherit = 'ir.attachment'
+
+    def _to_http_stream(self, *args, **kwargs):
+        from odoo.http import request
+        from odoo.exceptions import AccessError
+        # Mail download routes can reach a stream without ir.binary._find_record.
+        if request and self.sudo().res_model == 'sale.order':
+            document = request.env['sale.order'].browse(self.sudo().res_id)
+            if document.sudo().sph_center_id:
+                if request.env.user._is_public() or not request.env.user.active:
+                    raise AccessError('Unavailable')
+                document.check_access('read')
+        return super()._to_http_stream(*args, **kwargs)
