@@ -11,7 +11,13 @@ class Unrunnable(RuntimeError):
 
 def execute():
     count=int(os.environ.get('SPH_RACE_ROUNDS','4'))
-    code=f"round_count={count}\nexec(open('/opt/sph/scripts/g2_worker.py').read())\n"
+    code=f"round_count={count}\n" + """import traceback, json
+try:
+    exec(compile(open('/opt/sph/scripts/g2_worker.py').read(), 'g2_worker.py', 'exec'))
+except Exception as error:
+    print('SPH_G2_FAILURE '+json.dumps({'type':type(error).__name__, 'frames':[(frame.filename.rsplit('/',1)[-1],frame.lineno) for frame in traceback.extract_tb(error.__traceback__)]}))
+    raise
+"""
     result=subprocess.run(DC+['exec','-T','odoo','odoo','shell']+ODOO_ARGS+
         ['--no-http','--log-level=error'],input=code,text=True,capture_output=True,timeout=180)
     lines=result.stdout.splitlines()
@@ -22,7 +28,9 @@ def execute():
         if 'UNRUNNABLE: no witnessed contention' in result.stderr:
             raise Unrunnable('No witnessed lock contention')
         import re
-        locations=re.findall(r'g2_worker.py[^\n]*line (\d+)',result.stderr)
+        for line in lines:
+            if line.startswith('SPH_G2_FAILURE '): print(line)
+        locations=re.findall(r'g2_worker.py[^\n]*line (\d+)',result.stderr+result.stdout)
         print('G2 worker failure location: '+(locations[-1] if locations else 'bootstrap'))
         raise RuntimeError('G2 standalone race failed')
     stats=json.loads(final[-1].split(' ',1)[1])
