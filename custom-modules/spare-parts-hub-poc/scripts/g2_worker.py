@@ -52,7 +52,9 @@ for number in range(rounds):
     old.move_id._do_unreserve(); old.write({'state':'expired'})
     quants=env['stock.quant'].search([('product_id','=',product.id),('location_id','=',warehouse.lot_stock_id.id)])
     assert not any(quants.mapped('reserved_quantity'))
-    env['stock.quant']._update_available_quantity(product,warehouse.lot_stock_id,1-sum(quants.mapped('quantity')))
+    delta=1-sum(quants.mapped('quantity'))
+    if delta:
+        env['stock.quant']._update_available_quantity(product,warehouse.lot_stock_id,delta)
     orders=[]
     for index in range(2):
         center=env.ref('sph_core.fixture_center_independent_'+('a' if index==0 else 'b'))
