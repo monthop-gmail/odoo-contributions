@@ -135,3 +135,26 @@ Ignored `evidence/` contains package-version metadata, PostgreSQL version and
 synthetic Odoo logs. CI preserves it for seven days even on failure. Do not add
 tokens, passwords, personal data or private document content to evidence or hub
 reports. A green B0-B3 run is infrastructure evidence only, not G1-G4 acceptance.
+
+## B4b isolation verification
+
+Global SPH rules intersect native portal/group rules on orders, lines, pricelists,
+items and pickings. Scoped users cannot read raw quants/moves or product stock/cost
+aggregates, including with deliberately broader native groups. Membership changes
+invalidate rule caches. Native portal export remains denied.
+
+The band endpoint `/sph/band/<product-id>` authorizes the current user before a
+fixed-location elevated read. JSON contains only `band`; HTML only the band span.
+Client center/partner/pricelist/location selectors do not grant authority. Protected
+SPH sale documents and linked binary downloads require normal read authorization
+even when a share token is supplied.
+
+Eight `TestCenterIsolation` methods are bound in `expected-tests.json`. The live
+suite creates same-commercial-parent fixtures and ephemeral sessions inside the
+disposable harness, without passwords/API keys. Session/share tokens remain in
+memory-only IPC and the disposable filestore; they are never evidence outputs.
+It checks every role's band projection, bidirectional ORM-over-HTTP denials, native
+portal URLs/reports, attachment tokens, anonymous access and next-request revocation.
+Sanitized G1 access matrix, rule inventory and JUnit files go into `evidence/`.
+G1 acceptance requires the real live matrix to pass on the exact commit. G2 race
+remains explicitly UNRUNNABLE/SKIP; G2-G4 have not passed.

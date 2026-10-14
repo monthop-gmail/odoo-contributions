@@ -60,7 +60,7 @@ class TestCenterIsolation(TransactionCase):
             self.assertEqual(model.search_count([('id', 'in', [x.id for x in self.orders])]), 1)
             grouped = model._read_group([('id', 'in', [x.id for x in self.orders])], ['sph_center_id'], ['__count'])
             self.assertEqual(sum(row[1] for row in grouped), 1)
-            with self.assertRaises((AccessError, UserError)):
+            with self.assertRaises(UserError):
                 self.orders[1-i].with_user(user).export_data(['name'])
             with self.assertRaises(UserError):
                 self.orders[i].with_user(user).export_data(['name'])
