@@ -32,6 +32,8 @@ jobs:
           python3 scripts/test_pin_guard.py
       - name: Clean module install and smoke test
         run: python3 scripts/harness.py test
+      - name: Verify one-command UI startup from a disposable database
+        run: python3 scripts/harness.py up
       - name: Always remove this harness's containers and volumes
         if: always()
         run: python3 scripts/harness.py down

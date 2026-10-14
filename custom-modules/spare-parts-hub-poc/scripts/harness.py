@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = "sph-poc-" + hashlib.sha256(str(ROOT).encode()).hexdigest()[:10]
@@ -45,7 +46,7 @@ def install(test=False):
     result = subprocess.run(DC + ["run", "--rm", "--no-deps", "odoo"] + args,
                             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     EVIDENCE.mkdir(exist_ok=True)
-    (EVIDENCE / "odoo-tests.log").write_text(result.stdout)
+    (EVIDENCE / ("odoo-tests.log" if test else "odoo-install.log")).write_text(result.stdout)
     print(result.stdout, end="", flush=True)
     result.check_returncode()
     if test:
@@ -83,7 +84,13 @@ def main():
         (EVIDENCE / "postgres-version.txt").write_text(pg + "\n")
         install(test=args.action == "test")
         if args.action == "up":
-            run(DC + ["up", "--detach", "odoo"])
+            run(DC + ["up", "--detach", "--wait", "--wait-timeout", "120", "odoo"])
+            url = "http://127.0.0.1:18069/web/login?db=sph_poc"
+            with urllib.request.urlopen(url, timeout=10) as response:
+                assert response.status == 200, "Loopback UI did not respond"
+            (EVIDENCE / "ui-startup.json").write_text(
+                json.dumps({"loopback_http_status": 200, "container_health": "healthy"}) + "\n"
+            )
             print("Synthetic harness: http://127.0.0.1:18069 ; down removes its database.")
     finally:
         if args.action == "test":
