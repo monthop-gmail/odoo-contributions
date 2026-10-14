@@ -36,3 +36,29 @@ class ProductProduct(models.Model):
     @api.model
     def _search_display_name(self, operator, value):
         return identifier_domain(super()._search_display_name(operator, value), operator, value)
+
+
+# Product aggregate computations can sudo quants internally. Protect these fields
+# even if an SPH-scoped principal acquires a native inventory/sales group.
+PROTECTED_CONTEXT_FIELDS = frozenset({
+    'standard_price', 'list_price', 'qty_available', 'virtual_available', 'free_qty',
+    'incoming_qty', 'outgoing_qty', 'stock_quant_ids', 'stock_move_ids', 'orderpoint_ids',
+})
+
+
+class ScopedProductTemplate(models.Model):
+    _inherit = 'product.template'
+
+    def _has_field_access(self, field, operation):
+        if not self.env.su and self.env.user._sph_scoped() and field.name in PROTECTED_CONTEXT_FIELDS:
+            return False
+        return super()._has_field_access(field, operation)
+
+
+class ScopedProductProduct(models.Model):
+    _inherit = 'product.product'
+
+    def _has_field_access(self, field, operation):
+        if not self.env.su and self.env.user._sph_scoped() and field.name in PROTECTED_CONTEXT_FIELDS:
+            return False
+        return super()._has_field_access(field, operation)

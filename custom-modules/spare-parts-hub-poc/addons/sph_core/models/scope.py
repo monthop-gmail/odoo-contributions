@@ -5,6 +5,12 @@ from odoo import fields, models
 class Users(models.Model):
     _inherit = "res.users"
 
+    def write(self, values):
+        result = super().write(values)
+        if "sph_center_ids" in values:
+            self.env.registry.clear_cache()
+        return result
+
     def _sph_scoped(self):
         self.ensure_one()
         return bool(self.sph_center_ids) or self.has_group("base.group_portal") or self.has_group("sph_core.group_sph_bot")

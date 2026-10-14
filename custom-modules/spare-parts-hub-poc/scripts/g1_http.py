@@ -89,6 +89,8 @@ def execute():
     assert 'result' in rpc(bot,'sale.order','read',[[fixture['orders'][0]],['name']])
     assert 'error' in rpc(bot,'sale.order','read',[[fixture['orders'][1]],['name']])
     assert rpc(bot,'stock.quant','search',[[]]).get('result')==[]
+    for field in ('qty_available','free_qty','standard_price'):
+        assert 'error' in rpc(bot,'product.product','read',[[fixture['products'][0]],[field]])
     evidence('test_ai_scope_and_group_union',bot,False)
     status,body=get('/my/orders/'+str(fixture['orders'][0])+'?'+urlencode({'access_token':fixture['tokens'][0]}))
     assert status in (302,303,403,404) and fixture['names'][0] not in body

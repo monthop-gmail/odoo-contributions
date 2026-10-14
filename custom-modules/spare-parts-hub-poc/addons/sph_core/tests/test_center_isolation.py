@@ -95,3 +95,7 @@ class TestCenterIsolation(TransactionCase):
         with self.assertRaises(AccessError):
             self.orders[1].with_user(bot).read(['name'])
         self.assertFalse(self.env['stock.quant'].with_user(bot).search([]))
+
+        for field in ('qty_available', 'free_qty', 'standard_price'):
+            with self.assertRaises(AccessError):
+                self.env.ref('sph_core.fixture_part_01').product_variant_id.with_user(bot).read([field])
