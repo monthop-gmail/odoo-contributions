@@ -43,6 +43,8 @@ def execute():
         rows.append({'test':name,'actor':actor,'outcome':'ALLOW' if allowed else 'DENY','result':'PASS'})
     # Positive per every named role, exact payload fields and HTML; hostile selectors ignored.
     for role in fixture['sessions']:
+        index = 1 if role == 'sph_center_receiver' else 0
+        assert 'result' in rpc(role, 'sale.order', 'read', [[fixture['orders'][index]], ['name']])
         for product,band in zip(fixture['products'],('In stock','Low','Out','Low')):
             path='/sph/band/'+str(product)
             status,body=get(path+'?format=json&center_id=999999&location=999999',role)
