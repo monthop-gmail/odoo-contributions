@@ -6,24 +6,24 @@ from odoo.exceptions import AccessError
 from odoo.addons.sale.controllers.portal import CustomerPortal, PaymentPortal
 
 
-def protected_document(controller, model_name, document_id, access_token=None):
+def check_document(model_name, document_id):
     document = request.env[model_name].browse(document_id)
     if model_name == "sale.order" and document.sudo().sph_center_id:
         if request.env.user._is_public() or not request.env.user.active:
             raise AccessError("Unavailable")
         document.check_access("read")  # Tokens never substitute for SPH membership.
-    return super(type(controller), controller)._document_check_access(
-        model_name, document_id, access_token=access_token)
 
 
 class SphSalePortal(CustomerPortal):
     def _document_check_access(self, model_name, document_id, access_token=None):
-        return protected_document(self, model_name, document_id, access_token)
+        check_document(model_name, document_id)
+        return super()._document_check_access(model_name, document_id, access_token)
 
 
 class SphPaymentPortal(PaymentPortal):
     def _document_check_access(self, model_name, document_id, access_token=None):
-        return protected_document(self, model_name, document_id, access_token)
+        check_document(model_name, document_id)
+        return super()._document_check_access(model_name, document_id, access_token)
 
 
 class SphPortal(http.Controller):

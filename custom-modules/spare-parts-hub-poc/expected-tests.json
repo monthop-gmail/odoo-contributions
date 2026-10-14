@@ -4,5 +4,13 @@
   "TestSPHFixtures.test_seed_organization_and_roles",
   "TestSPHFixtures.test_seed_purchase_and_stock",
   "TestSPHFixtures.test_center_mapping_validation",
-  "TestSPHFixtures.test_fixture_reseed_is_idempotent"
+  "TestSPHFixtures.test_fixture_reseed_is_idempotent",
+  "TestCenterIsolation.test_own_projection",
+  "TestCenterIsolation.test_bidirectional_id_denial",
+  "TestCenterIsolation.test_partner_pricelist_location_spoof",
+  "TestCenterIsolation.test_search_count_group_export_report",
+  "TestCenterIsolation.test_lines_attachments_no_leak",
+  "TestCenterIsolation.test_cross_center_share_token",
+  "TestCenterIsolation.test_anonymous_revoke_denial",
+  "TestCenterIsolation.test_ai_scope_and_group_union"
 ]
