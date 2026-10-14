@@ -11,6 +11,29 @@ from check_pins import ROOT, check
 
 
 class TestPinGuard(unittest.TestCase):
+    def test_runtime_drift_controls(self):
+        pins = json.loads((ROOT / "version-pins.json").read_text())
+        observed = {
+            "python": pins["python_version"],
+            "odoo_version": pins["odoo"]["runtime_version"],
+            "odoo_deb": pins["odoo"]["deb_version"],
+            "packages": (ROOT / "runtime-python.lock").read_text().splitlines(),
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "runtime.json"
+            path.write_text(json.dumps(observed))
+            with contextlib.redirect_stdout(io.StringIO()):
+                check(runtime=path)
+            for field, value, message in (
+                ("python", "0.0.0", "Python runtime drift"),
+                ("odoo_deb", "20.0", "Odoo package drift"),
+                ("packages", [], "distribution inventory drift"),
+            ):
+                with self.subTest(field=field):
+                    path.write_text(json.dumps({**observed, field: value}))
+                    with self.assertRaisesRegex(AssertionError, message):
+                        check(runtime=path)
+
     def test_drift_controls(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "sph"

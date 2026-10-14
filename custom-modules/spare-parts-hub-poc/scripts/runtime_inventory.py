@@ -9,9 +9,9 @@ import odoo.release
 
 def inventory():
     packages = sorted({
-        (dist.metadata["Name"].lower().replace("_", "-"), dist.version)
+        (dist.metadata.get("Name").lower().replace("_", "-"), dist.version)
         for dist in importlib.metadata.distributions()
-        if dist.metadata["Name"]
+        if dist.metadata.get("Name")
     })
     return {
         "python": platform.python_version(),

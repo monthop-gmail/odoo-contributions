@@ -19,6 +19,6 @@
   "python_version": "3.12.3",
   "lock_sha256": {
     "requirements.lock": "92e3536e786f69b43dc026f9c6ab089cbdf477b47401915af401afa2603e3b44",
-    "runtime-python.lock": "4f27616c75fe00c8a129f43d8fd1a542abd2ca1ba688aa64017372fd29245955"
+    "runtime-python.lock": "cdd7c2e80993635e3ca164fe764d6c0221cc6983676dbbf744163d3a532378b6"
   }
 }
