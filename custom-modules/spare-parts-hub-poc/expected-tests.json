@@ -1,3 +1,8 @@
 [
-  "TestSPHSkeleton.test_odoo19_community_dependency_registry"
+  "TestSPHSkeleton.test_odoo19_community_dependency_registry",
+  "TestSPHFixtures.test_oem_alternate_search",
+  "TestSPHFixtures.test_seed_organization_and_roles",
+  "TestSPHFixtures.test_seed_purchase_and_stock",
+  "TestSPHFixtures.test_center_mapping_validation",
+  "TestSPHFixtures.test_fixture_reseed_is_idempotent"
 ]
