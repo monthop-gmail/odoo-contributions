@@ -5,7 +5,7 @@
     "author": "monthop-gmail",
     "maintainer": "monthop-gmail",
     "depends": ["stock", "purchase", "sale_management", "portal"],
-    "data": ["security/ir.model.access.csv", "data/fixtures.xml"],
+    "data": ["security/scope.xml", "security/ir.model.access.csv", "data/fixtures.xml"],
     "installable": True,
     "application": False,
 }

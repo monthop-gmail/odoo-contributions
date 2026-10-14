@@ -86,7 +86,7 @@ class SphCenterFixtures(models.Model):
             portal = role in ("sph_center_requester", "sph_center_receiver")
             base_group = self.env.ref("base.group_portal" if portal else "base.group_user")
             group = ensure("group_" + role, "res.groups", {
-                "name": "FIXTURE " + role, "implied_ids": [Command.set([base_group.id])],
+                "name": "FIXTURE " + role, "implied_ids": [Command.set([base_group.id] + ([] if portal else [self.env.ref("sph_core.group_sph_reader").id]))],
             })
             member = centers["independent_a" if role == "sph_center_requester" else "independent_b"]
             user = ensure("fixture_user_" + role, "res.users", {
