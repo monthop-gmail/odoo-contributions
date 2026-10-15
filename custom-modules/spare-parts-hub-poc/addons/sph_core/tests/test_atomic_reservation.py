@@ -106,3 +106,10 @@ class TestAtomicReservation(TransactionCase):
         self.assertEqual(order.state,'draft')
         self.assertFalse(order.picking_ids)
         self.assertFalse(order.sph_reservation_ids)
+
+    def test_expiry_cron_registered_active(self):
+        cron=self.env.ref('sph_core.ir_cron_expire_reservations')
+        self.assertTrue(cron.active)
+        self.assertEqual(cron.model_id.model,'sph.reservation')
+        self.assertEqual(cron.code,'model._cron_expire()')
+        self.assertEqual((cron.interval_number,cron.interval_type),(1,'hours'))

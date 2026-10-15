@@ -130,6 +130,41 @@ for number in range(rounds):
         'loser_message':'native no allocation' if native and winners[0]==0 else 'Unavailable',
         'replay_duplicate':False})
     print('SPH_G2_LOCK_WITNESS '+json.dumps({'round':number,'waiters':waiters}),flush=True)
+# Exercise the installed cron action against committed native reservations.
+# Scheduler threads stay disabled for deterministic CI; this invokes its real entrypoint.
+from datetime import timedelta
+from odoo import fields
+env.invalidate_all()
+active=env['sph.reservation'].search([('move_id.product_id','=',product.id),('state','=','active')])
+active.write({'expires_at':fields.Datetime.now()-timedelta(seconds=1)})
+env.cr.commit()
+cron=env.ref('sph_core.ir_cron_expire_reservations')
+assert cron.active
+cron.method_direct_trigger()
+env.invalidate_all()
+center=env.ref('sph_core.fixture_center_independent_a')
+expiry_order=env['sale.order'].create({'partner_id':center.partner_id.id,'sph_center_id':center.id,
+    'warehouse_id':warehouse.id,'order_line':[Command.create({'product_id':product.id,
+        'product_uom_qty':1,'price_unit':104})]})
+expiry_order.action_confirm()
+env.cr.commit()
+assert 'result' in request(0,expiry_order.id,'FIXTURE cron expiry')
+env.invalidate_all()
+expiry=env['sph.reservation'].search([('order_id','=',expiry_order.id)])
+assert len(expiry)==1 and expiry.move_id.quantity==1
+assert expiry.expires_at>fields.Datetime.now()+timedelta(hours=47)
+expiry.write({'expires_at':fields.Datetime.now()-timedelta(seconds=1)})
+expiry_id=expiry.id
+env.cr.commit()
+cron.method_direct_trigger()
+with env.registry.cursor() as observer:
+    observed=api.Environment(observer,SUPERUSER_ID,{})
+    expired=observed['sph.reservation'].browse(expiry_id)
+    quants=observed['stock.quant'].search([('product_id','=',product.id),('location_id','=',warehouse.lot_stock_id.id)])
+    assert expired.state=='expired' and expired.move_id.quantity==0
+    assert sum(quants.mapped('reserved_quantity'))==0
+expiry_evidence={'cron_active':True,'entrypoint':'ir.cron.method_direct_trigger',
+    'expired_state':'expired','native_move_quantity':0,'native_quant_reserved':0}
 assert any(row['observed_lock_waiters']>=2 for row in results), 'UNRUNNABLE: no witnessed contention'
 print('SPH_G2_RESULT '+json.dumps({'round_count':rounds,'double_allocations':0,
-    'isolation':isolation,'lock_wait_rounds':sum(row['observed_lock_waiters']>=2 for row in results),'rounds':results}),flush=True)
+    'expiry':expiry_evidence,'isolation':isolation,'lock_wait_rounds':sum(row['observed_lock_waiters']>=2 for row in results),'rounds':results}),flush=True)
