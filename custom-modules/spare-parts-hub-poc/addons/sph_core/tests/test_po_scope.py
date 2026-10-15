@@ -293,9 +293,9 @@ class TestPOCenterScope(TransactionCase):
         with self.assertRaises(AccessError):receipts[1].with_user(actor).read(['name'])
         self.assertEqual(self.env['stock.picking'].with_user(actor).search_count([('id','in',[r.id for r in receipts])]),1)
         actor.sph_center_ids=[Command.clear()]
-        actor.group_ids=[Command.link(self.env.ref('sph_core.group_sph_po_hub').id)]
+        actor.group_ids=[Command.link(self.env.ref('sph_core.group_sph_picking_hub').id)]
         self.assertEqual(self.env['stock.picking'].with_user(actor).search_count([('id','in',[r.id for r in receipts])]),2)
-        actor.group_ids=[Command.unlink(self.env.ref('sph_core.group_sph_po_hub').id)]
+        actor.group_ids=[Command.unlink(self.env.ref('sph_core.group_sph_picking_hub').id)]
         self.assertFalse(self.env['stock.picking'].with_user(actor).search([('id','in',[r.id for r in receipts])]))
 
     def company_probe(self):

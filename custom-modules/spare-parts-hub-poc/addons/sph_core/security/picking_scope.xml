@@ -1,0 +1,12 @@
+<odoo>
+    <!-- Visibility only; no implied native roles and no seeded assignees. -->
+    <record id="group_sph_picking_hub" model="res.groups">
+        <field name="name">SPH explicit all-center picking visibility (no PO grant)</field>
+    </record>
+    <!-- Global on purpose: blank ownership is not proof of non-SPH data. -->
+    <record id="scope_stock_picking" model="ir.rule">
+        <field name="name">SPH explicit picking membership or picking-only grant</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="domain_force">[(1, '=', 1)] if user.has_group('sph_core.group_sph_picking_hub') else [('sph_center_id', 'in', user.sph_center_ids.ids)]</field>
+    </record>
+</odoo>

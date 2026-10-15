@@ -77,9 +77,9 @@ implicit privileged bypass. `_approval_allowed()` now raises
 callers propagate that exception; no caller relies on a False return.
 
 `stock.picking` no longer uses `_sph_scoped()` fallthrough: visibility requires
-explicit membership, or the same explicit hub visibility grant as POs. Native
+explicit membership, or the separate `group_sph_picking_hub` visibility grant. Native
 ACLs remain unchanged. PO-created receipts inherit the PO center server-side.
-The dedicated native G2 competitor receives the explicit visibility grant only
+The dedicated native G2 competitor receives the picking-only visibility grant only
 inside its disposable race worker and revokes it before successful completion;
 this preserves both native/SPH race outcomes without granting stock-manager to
 an SPH role or seeding hub visibility. Native receipt tests cover empty scope,
@@ -112,3 +112,30 @@ workflow: subsequent Flow A/B commands rebuild clean single-company databases.
 P0 remains a single-company synthetic rehearsal. This evidence does not authorize
 multi-company operation, staging, merge/deploy or pilot start. RFQ mail-send tests
 and mail/attachment projection performance are backlog, not implemented here.
+
+## B8 — independent PO and picking visibility grants
+
+`group_sph_po_hub` grants all-center PO visibility only. The separate
+`group_sph_picking_hub` grants all-center picking visibility only. Neither implies
+the other, any native ACL/group, or any SPH approval/stock mutation authority;
+both have zero seeded assignees. Native ACL and company rules still intersect
+these visibility rules. A bot remains nonhuman even with either grant and native
+manager/approver group unions.
+
+The picking rule intentionally remains GLOBAL on **every picking** for P0. A
+blank center is an ownership gap, not reliable evidence that a delivery/internal
+transfer/legacy receipt is unrelated to SPH. Excluding blank rows would silently
+restore broad native visibility and could leak an untagged SPH document. Without
+a picking-only grant, missing membership yields no pickings and center members
+see only explicitly tagged own-center pickings. Untagged pickings require the
+explicit picking-only grant plus native rights. PO receipts remain server-tagged
+from their PO. This is a conservative synthetic-harness boundary, not a claim of
+compatibility with unrestricted native warehouse operations. Revisiting the
+protected set needs an explicit ownership classification and separate approval.
+
+The native race competitor now temporarily receives only the picking grant;
+it never receives PO hub visibility. The worker restores its original groups and
+asserts both grants absent before successful completion. Tests pin blank-row
+behavior and grant independence in both directions with native-capable rollback
+actors, without changing any shipped native ACL. B8-P0 rehearsal, RFQ mail-send,
+projection performance, staging and pilot sign-off are outside this change.

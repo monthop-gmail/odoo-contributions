@@ -237,6 +237,7 @@ rows[-1]['path']='revoked_hub'
 fx['approver'].sph_center_ids=[(6,0,original_centers)]
 env.cr.commit();env.registry.clear_cache();env.registry.signal_changes()
 assert not env['res.users'].search_count([('group_ids','in',grant.id)])
+assert not env['res.users'].search_count([('group_ids','in',env.ref('sph_core.group_sph_picking_hub').id)])
 exec(compile(open('/opt/sph/scripts/po_scope_live.py').read(),'po_scope_live.py','exec'))
 execute(env,fx,rpc,audit_count,observed,rows,sessions)
 exec(compile(open('/opt/sph/scripts/company_scope_live.py').read(),'company_scope_live.py','exec'))
