@@ -64,6 +64,7 @@ def allow(record,method,action,args=None,kwargs=None):
 
 # B5b: exercise public lower-level mutation entrypoints over committed HTTP.
 deny(fx['scrap'],'do_scrap','scrap.validate')
+rows[-1]['path']='do_scrap'
 quant_model=env['stock.quant']
 before=audit_count(quant_model,'bot','quant.create','deny')
 response=rpc('bot',quant_model,'create',[{
@@ -72,6 +73,7 @@ response=rpc('bot',quant_model,'create',[{
 assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
 # A denied create has no resource ID: its plain audit res_id is zero.
 observed(quant_model,'bot','quant.create','deny',before)
+rows[-1]['path']='create'
 with env.registry.cursor() as cursor:
     observer=api.Environment(cursor,SUPERUSER_ID,{})
     assert observer['stock.scrap'].browse(fx['scrap'].id).state=='draft'
