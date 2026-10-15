@@ -69,3 +69,20 @@ class POAttachmentScope(models.Model):
 
     def read(self,*args,**kwargs):
         return link_read(self,'res_model',super().read,*args,**kwargs)
+
+
+class POBinaryScope(models.AbstractModel):
+    _inherit='ir.binary'
+
+    def _find_record(self,xmlid=None,res_model='ir.attachment',res_id=None,access_token=None,field=None):
+        candidate=self.env.ref(xmlid,raise_if_not_found=False) if xmlid else (
+            self.env[res_model].browse(res_id) if res_model in self.env and res_id else None)
+        if candidate is not None and candidate._name=='purchase.order':
+            candidate._sph_po_scope(action='po.binary')
+        elif candidate is not None and candidate._name=='ir.attachment':
+            attachment=candidate.sudo().exists()
+            if not attachment:return self.env['purchase.order']._sph_po_deny('po.binary')
+            if attachment.res_model=='purchase.order':
+                self.env['purchase.order'].browse(attachment.res_id)._sph_po_scope(action='po.binary')
+        return super()._find_record(xmlid=xmlid,res_model=res_model,res_id=res_id,
+            access_token=access_token,field=field)

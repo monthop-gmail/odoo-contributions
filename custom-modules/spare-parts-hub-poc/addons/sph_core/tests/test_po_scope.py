@@ -213,3 +213,14 @@ class TestPOCenterScope(TransactionCase):
                 self.denied(lambda:records.with_user(user).read([field]))
             for model,records in (('mail.message',messages),('ir.attachment',attachments)):
                 self.assertFalse(self.env[model].with_user(user).search([('id','in',[r.id for r in records])]))
+
+    def test_attachment_token_cannot_replace_center(self):
+        po=self.orders[1]
+        attachment=self.env['ir.attachment'].create({'name':'FIXTURE binary token',
+            'raw':b'FIXTURE token protected','res_model':'purchase.order','res_id':po.id,
+            'access_token':'fixture-po-test-token'})
+        binary=self.env['ir.binary'].with_user(self.users[0])
+        self.denied(lambda:binary._find_record(res_id=attachment.id,access_token='fixture-po-test-token'))
+        self.denied(lambda:binary._find_record(res_id=2147483647,access_token='fixture-po-test-token'))
+        self.assertEqual(self.env['ir.binary'].with_user(self.users[1])._find_record(
+            res_id=attachment.id,access_token='fixture-po-test-token').id,attachment.id)

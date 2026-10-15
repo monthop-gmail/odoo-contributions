@@ -110,5 +110,6 @@
   "TestPOCenterScope.test_mixed_batch_atomic_and_center_context_spoof",
   "TestPOCenterScope.test_same_center_review_rfq_confirm_and_draft",
   "TestPOCenterScope.test_hub_grant_revoke_remaining_capabilities",
-  "TestPOCenterScope.test_po_lines_mail_attachments_authorized_only"
+  "TestPOCenterScope.test_po_lines_mail_attachments_authorized_only",
+  "TestPOCenterScope.test_attachment_token_cannot_replace_center"
 ]
