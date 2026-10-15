@@ -132,7 +132,7 @@ class SphCenterFixtures(models.Model):
         centers=[];reservists=[];requesters=[]
         for label in ('A','B'):
             partner=create('partner_'+label,'res.partner',{'name':'FIXTURE FLOW A CENTER '+label,
-                'is_company':True,'sph_fixture':True})
+                'is_company':True,'sph_fixture':True,'company_id':self.env.company.id})
             center=create('center_'+label,'sph.center',{'name':'FIXTURE FLOW A CENTER '+label,
                 'partner_id':partner.id,'center_type':'independent','company_id':self.env.company.id,
                 'sph_fixture':True})
@@ -145,7 +145,7 @@ class SphCenterFixtures(models.Model):
                     'company_id':self.env.company.id,'company_ids':[Command.set(self.env.company.ids)],
                     'group_ids':[Command.set(self.env.ref(group).ids)],
                     'sph_center_ids':[Command.set(center.ids)]})
-                actor.partner_id.write({'sph_fixture':True,'sph_center_id':center.id})
+                actor.partner_id.write({'sph_fixture':True,'sph_center_id':center.id,'company_id':self.env.company.id})
                 if kind=='requester': actor.partner_id.parent_id=partner
                 if actor.has_group('stock.group_stock_manager'):
                     raise ValidationError('FIXTURE Flow A actors must not have stock-manager authority.')
