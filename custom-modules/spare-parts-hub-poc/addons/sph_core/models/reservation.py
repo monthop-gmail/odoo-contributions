@@ -2,7 +2,7 @@
 from datetime import timedelta
 import logging
 from odoo import api, fields, models
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, MissingError, UserError
 
 _logger = logging.getLogger(__name__)
 LOCK_NAMESPACE = 194556264
@@ -64,7 +64,15 @@ class Order(models.Model):
             user.has_group('sph_core.group_sph_hub_operator') or
             user.has_group('sph_core.group_sph_warehouse_picker')):
             raise AccessError('Unavailable')
-        self.check_access('read')
+        try:
+            self.check_access('read')
+            if not self.exists():
+                raise AccessError('Unavailable')
+        except (AccessError, MissingError):
+            from .authority import audit
+            # No resource lookup or foreign identifier in scope-denial evidence.
+            audit(self.browse(),'sale.reserve.scope','deny')
+            raise UserError('Unavailable') from None
         if not self.sph_center_id or not isinstance(request_key,str) or not request_key or len(request_key)>80:
             raise UserError('Unavailable')
         self.env.cr.execute('SELECT id FROM sale_order WHERE id=%s FOR UPDATE', [self.id])

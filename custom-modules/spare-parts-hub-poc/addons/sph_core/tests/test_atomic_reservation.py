@@ -124,8 +124,15 @@ class TestAtomicReservation(TransactionCase):
             actor.sph_center_ids=[Command.set(own.ids)]
             order=self.order()
             order.write({'sph_center_id':foreign.id,'partner_id':foreign.partner_id.id})
-            with self.assertRaises(AccessError):
+            with self.assertRaisesRegex(UserError,'Unavailable'):
                 order.with_user(actor).sph_reserve('FIXTURE foreign center')
             self.assertFalse(order.sph_reservation_ids)
             self.assertFalse(any(order.picking_ids.move_ids.mapped('quantity')))
             self.assertEqual(order.state,'sale')
+
+    def test_missing_reserve_matches_scope_denial(self):
+        actor=self.env.ref('sph_core.fixture_user_sph_hub_operator')
+        actor.sph_center_ids=[Command.set(self.env.ref('sph_core.fixture_center_shared_a').ids)]
+        missing=self.env['sale.order'].browse(2147483647)
+        with self.assertRaisesRegex(UserError,'^Unavailable$'):
+            missing.with_user(actor).sph_reserve('FIXTURE missing')

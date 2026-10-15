@@ -88,6 +88,16 @@ with env.registry.cursor() as cursor:
     original=api.Environment(cursor,SUPERUSER_ID,{})['sale.order'].browse(draft.id)
     assert original.state=='draft' and not original.picking_ids
 
+# Scope and nonexistent IDs have identical public errors and durable ID-free audit.
+fx['operator'].sph_center_ids=[(6,0,env.ref('sph_core.fixture_center_shared_a').ids)]
+env.cr.commit()
+for target in (fx['so'],env['sale.order'].browse(2147483647)):
+    before=audit_count(env['sale.order'],'operator','sale.reserve.scope','deny')
+    response=rpc('operator',target,'sph_reserve',['FIXTURE scope denial'])
+    assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+    observed(env['sale.order'],'operator','sale.reserve.scope','deny',before)
+    rows[-1]['path']='foreign' if target==fx['so'] else 'missing'
+
 # The native-style approval refusal is tested by committed state, not exception.
 assert 'result' in rpc('bot',fx['po'],'button_approve',[],{'force':True})
 with env.registry.cursor() as cursor:
