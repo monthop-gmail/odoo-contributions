@@ -44,5 +44,11 @@
   "TestPurchaseAuthority.test_bot_quant_write_denied",
   "TestPurchaseAuthority.test_approver_quant_write_allowed",
   "TestPurchaseAuthority.test_allow_audit_rolls_back_with_action",
-  "TestAtomicReservation.test_readonly_reserve_cannot_confirm"
+  "TestAtomicReservation.test_readonly_reserve_cannot_confirm",
+  "TestPurchaseAuthority.test_bot_so_discount_denied",
+  "TestPurchaseAuthority.test_approver_so_discount_allowed",
+  "TestPurchaseAuthority.test_bot_po_discount_denied",
+  "TestPurchaseAuthority.test_approver_po_discount_allowed",
+  "TestPurchaseAuthority.test_bot_so_pricelist_denied",
+  "TestPurchaseAuthority.test_approver_so_pricelist_allowed"
 ]

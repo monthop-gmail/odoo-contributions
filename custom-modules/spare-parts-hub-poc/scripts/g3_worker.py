@@ -83,6 +83,9 @@ deny(fx['po'],'action_rfq_send','po.send')
 for key,method,action,args in (
     ('so_line','write','sale.order.line.price_unit',[{'price_unit':109}]),
     ('po_line','write','purchase.order.line.price_unit',[{'price_unit':109}]),
+    ('so_line','write','sale.order.line.discount',[{'discount':7}]),
+    ('po_line','write','purchase.order.line.discount',[{'discount':7}]),
+    ('so','write','sale.order.pricelist_id',[{'pricelist_id':fx['pricelist'].id}]),
     ('scrap','action_validate','scrap.validate',[]),
     ('quant','action_apply_inventory','inventory.apply',[]),
     ('quant','write','quant.write',[{'quantity':5}])):

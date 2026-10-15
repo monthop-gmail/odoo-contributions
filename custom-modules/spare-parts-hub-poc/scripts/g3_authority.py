@@ -7,7 +7,7 @@ from harness import DC, ODOO_ARGS, ROOT
 
 def execute():
     from price_probe import execute as probe
-    probe()
+    probe(require_denied=True)
     code="""import json, traceback
 try:
     exec(compile(open('/opt/sph/scripts/g3_worker.py').read(),'g3_worker.py','exec'))

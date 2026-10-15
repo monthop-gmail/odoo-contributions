@@ -17,7 +17,8 @@ def prepare(env):
     location=env.ref('sph_core.fixture_wh_central').lot_stock_id
     quant=env['stock.quant'].search([('product_id','=',product.id),('location_id','=',location.id)],limit=1)
     scrap=env['stock.scrap'].create({'product_id':product.id,'scrap_qty':1,'location_id':location.id})
-    return {'bot':bot,'approver':approver,'po':po,'so_line':sale.order_line,'po_line':po.order_line,
+    pricelist=env['product.pricelist'].create({'name':'FIXTURE alternate authority price','sph_center_id':center.id,'currency_id':env.company.currency_id.id})
+    return {'so':sale,'pricelist':pricelist,'bot':bot,'approver':approver,'po':po,'so_line':sale.order_line,'po_line':po.order_line,
             'quant':quant,'scrap':scrap,'supplier':supplier,'product':product}
 
 
@@ -123,3 +124,37 @@ class TestPurchaseAuthority(TransactionCase):
             self.allow('so_line','write',{'price_unit':113})
             raise RollbackProbe()
         self.assertEqual(self.env['sph.authority.audit'].search_count([]),before)
+
+    def price_bot_scope(self):
+        # Deliberate native capability union: denial must come from SPH authority,
+        # not from a missing ACL or a mismatched center. Rolled back per test.
+        bot=self.fx['bot']
+        bot.write({'group_ids':[Command.link(self.env.ref('sales_team.group_sale_manager').id)],
+            'sph_center_ids':[Command.set(self.fx['so'].sph_center_id.ids)]})
+        self.fx['so'].with_user(bot).check_access('write')
+        self.fx['so_line'].with_user(bot).check_access('write')
+
+    def test_bot_so_discount_denied(self):
+        self.price_bot_scope();self.deny('so_line','write',{'discount':7})
+        self.assertEqual(self.fx['so_line'].discount,0)
+
+    def test_approver_so_discount_allowed(self):
+        self.allow('so_line','write',{'discount':7})
+        self.assertEqual(self.fx['so_line'].discount,7)
+
+    def test_bot_po_discount_denied(self):
+        self.deny('po_line','write',{'discount':7})
+        self.assertEqual(self.fx['po_line'].discount,0)
+
+    def test_approver_po_discount_allowed(self):
+        self.allow('po_line','write',{'discount':7})
+        self.assertEqual(self.fx['po_line'].discount,7)
+
+    def test_bot_so_pricelist_denied(self):
+        self.price_bot_scope();before=self.fx['so'].pricelist_id
+        self.deny('so','write',{'pricelist_id':self.fx['pricelist'].id})
+        self.assertEqual(self.fx['so'].pricelist_id,before)
+
+    def test_approver_so_pricelist_allowed(self):
+        self.allow('so','write',{'pricelist_id':self.fx['pricelist'].id})
+        self.assertEqual(self.fx['so'].pricelist_id,self.fx['pricelist'])

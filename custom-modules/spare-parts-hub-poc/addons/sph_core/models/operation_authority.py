@@ -3,25 +3,37 @@ from odoo.exceptions import AccessError
 from .authority import approver, audit, internal_stock, _INTERNAL, _DRAFT
 
 
+PROTECTED_PRICE_FIELDS=('price_unit','discount','pricelist_id')
+
+
 def price_write(records, values, parent):
-    if 'price_unit' not in values or records.env.uid == 1:
+    protected=[key for key in PROTECTED_PRICE_FIELDS if key in values]
+    if not protected or records.env.uid == 1:
         return parent(records).write(values)
-    approver(records,records._name+'.price_unit')
+    for key in protected:
+        approver(records,records._name+'.'+key)
     result=parent(records.sudo()).write(values)
-    audit(records,records._name+'.price_unit','allow')
+    for key in protected:
+        audit(records,records._name+'.'+key,'allow')
     return result
+
+
+def price_create(records, values_list, parent, internal=False):
+    protected=[key for key in PROTECTED_PRICE_FIELDS if any(key in values for values in values_list)]
+    guarded=records.env.uid != 1 and not internal
+    if guarded:
+        for key in protected: approver(records,records._name+'.'+key)
+    created=parent(records).create(values_list)
+    if guarded:
+        for key in protected: audit(created,records._name+'.'+key,'allow')
+    return created
 
 
 class SalePrice(models.Model):
     _inherit='sale.order.line'
     @api.model_create_multi
     def create(self, values_list):
-        if self.env.uid != 1 and any('price_unit' in values for values in values_list):
-            approver(self,'sale.order.line.price_unit')
-        records=super().create(values_list)
-        if self.env.uid != 1 and any('price_unit' in values for values in values_list):
-            audit(records,'sale.order.line.price_unit','allow')
-        return records
+        return price_create(self,values_list,lambda record:super(SalePrice,record))
     def write(self, values):
         return price_write(self,values,lambda record:super(SalePrice,record))
 
@@ -30,16 +42,17 @@ class PurchasePrice(models.Model):
     _inherit='purchase.order.line'
     @api.model_create_multi
     def create(self, values_list):
-        if self.env.uid != 1 and not _DRAFT.get() and any('price_unit' in values for values in values_list):
-            approver(self,'purchase.order.line.price_unit')
-        records=super().create(values_list)
-        if self.env.uid != 1 and not _DRAFT.get() and any('price_unit' in values for values in values_list):
-            audit(records,'purchase.order.line.price_unit','allow')
-        return records
+        return price_create(self,values_list,lambda record:super(PurchasePrice,record),internal=_DRAFT.get())
     def write(self, values):
         if self.env.uid != 1 and self.env.user.has_group('sph_core.group_sph_bot') and any(line.sudo().order_id.state != 'draft' for line in self):
             audit(self,'po.line.write','deny');raise AccessError('Unavailable')
         return price_write(self,values,lambda record:super(PurchasePrice,record))
+
+
+class SalePricelist(models.Model):
+    _inherit='sale.order'
+    def write(self, values):
+        return price_write(self,values,lambda record:super(SalePricelist,record))
 
 
 class ScrapAuthority(models.Model):
