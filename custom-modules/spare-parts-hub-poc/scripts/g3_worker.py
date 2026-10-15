@@ -57,7 +57,7 @@ def allow(record,method,action,args=None,kwargs=None):
     if 'error' in response:
         error=response['error'].get('data',{})
         print('SPH_G3_CHECK '+json.dumps({'action':action,'error_type':error.get('name'),'message':error.get('message')}),flush=True)
-    assert 'result' in response
+    assert 'error' not in response and response.get('jsonrpc')=='2.0'
     observed(record,'approver',action,'allow',before)
 
 
@@ -80,6 +80,9 @@ for key,method,action,args in (
     if action=='inventory.apply':
         assert 'result' in rpc('approver',fx['quant'],'write',[{'inventory_quantity':6}])
     allow(fx[key],method,action,args)
+    if action=='inventory.apply':
+        with env.registry.cursor() as cursor:
+            assert api.Environment(cursor,SUPERUSER_ID,{})['stock.quant'].browse(fx['quant'].id).quantity==6
 allow(fx['po'],'sph_review','po.review')
 allow(fx['po'],'button_confirm','po.confirm')
 with env.registry.cursor() as cursor:
