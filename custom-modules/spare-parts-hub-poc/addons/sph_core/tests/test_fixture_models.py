@@ -64,7 +64,7 @@ class TestSPHFixtures(TransactionCase):
 
     def test_fixture_reseed_is_idempotent(self):
         references = [self.fixture(key).id for key in ("part_01", "center_owned", "user_sph_bot")]
-        self.env["sph.center"]._seed_fixtures()
+        self.env["sph.center"]._seed_fixtures(profile="disposable-test-harness")
         self.assertEqual(references, [self.fixture(key).id for key in (
             "part_01", "center_owned", "user_sph_bot")])
         self.test_seed_purchase_and_stock()
@@ -76,3 +76,12 @@ class TestSPHFixtures(TransactionCase):
         self.assertTrue(native.has_group('stock.group_stock_manager'))
         self.assertFalse(native.has_group('sph_core.group_sph_reader'))
         self.assertFalse(picker.has_group('stock.group_stock_manager'))
+
+    def test_native_actor_seed_rejects_demo_pilot(self):
+        seed=self.env['sph.center']
+        before=self.env['res.users'].search_count([])
+        for profile in (None,'demo','pilot'):
+            with self.assertRaisesRegex(ValidationError,'harness-only'):
+                seed._seed_fixtures(profile=profile)
+        self.assertEqual(self.env['res.users'].search_count([]),before)
+        self.assertTrue(self.fixture('user_native_actor').has_group('stock.group_stock_manager'))

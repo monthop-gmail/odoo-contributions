@@ -73,5 +73,6 @@
   "TestPurchaseAuthority.test_bot_po_button_unlock_locked",
   "TestPurchaseAuthority.test_approver_po_button_unlock_locked",
   "TestPurchaseAuthority.test_bot_po_write_locked",
-  "TestPurchaseAuthority.test_approver_po_write_locked"
+  "TestPurchaseAuthority.test_approver_po_write_locked",
+  "TestSPHFixtures.test_native_actor_seed_rejects_demo_pilot"
 ]

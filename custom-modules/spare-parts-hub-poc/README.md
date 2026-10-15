@@ -327,3 +327,11 @@ if none appears. G2-lock-waits.log remains the required contention evidence.
 Live JUnit classnames identify each real gate; gate_acceptance reflects actual
 runner success/skips/failures and always keeps G4 PENDING. Historical #61 and the
 old blocked task are not implementation or G4 evidence.
+
+### M5 seed boundary
+
+The entire privileged fixture initializer is **disposable-test-harness only**:
+it requires the explicit `disposable-test-harness` profile and the dedicated
+`sph_poc` database. Missing, demo and pilot profiles fail before any seed writes.
+The native stock-manager actor must never be reused in a demo/pilot seed; no such
+seed is supplied here. A future demo seed must be separate and omit this actor.

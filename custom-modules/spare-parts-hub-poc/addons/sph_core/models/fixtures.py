@@ -7,7 +7,9 @@ class SphCenterFixtures(models.Model):
     _inherit = "sph.center"
 
     @api.model
-    def _seed_fixtures(self):
+    def _seed_fixtures(self, profile=None):
+        if profile != "disposable-test-harness":
+            raise ValidationError("FIXTURE seed is harness-only; demo/pilot seed is forbidden.")
         if self.env.cr.dbname != "sph_poc" or self.env["res.company"].search_count([]) != 1:
             raise ValidationError("FIXTURE seed requires the single-company disposable sph_poc database.")
 
