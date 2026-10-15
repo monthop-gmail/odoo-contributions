@@ -18,6 +18,8 @@ else:
     users, orders, lists, pickings = prepare(env)
     bot = env.ref('sph_core.fixture_user_sph_bot')
     bot.sph_center_ids = [Command.set(orders[0].sph_center_id.ids)]
+    # Explicit positive-fixture membership; no unscoped approver visibility.
+    env.ref('sph_core.fixture_user_sph_purchasing_approver').sph_center_ids = [Command.set(orders[0].sph_center_id.ids)]
     # Deliberately union native broad grants: global center/raw-stock rules must win.
     bot.group_ids = [Command.link(env.ref('sales_team.group_sale_manager').id),
                      Command.link(env.ref('stock.group_stock_manager').id)]
