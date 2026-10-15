@@ -80,9 +80,9 @@ class POBinaryScope(models.AbstractModel):
     def _find_record(self,xmlid=None,res_model='ir.attachment',res_id=None,access_token=None,field=None):
         candidate=self.env.ref(xmlid,raise_if_not_found=False) if xmlid else (
             self.env[res_model].browse(res_id) if res_model in self.env and res_id else None)
-        if candidate is not None and candidate._name=='purchase.order':
+        if candidate and candidate._name=='purchase.order':
             candidate._sph_po_scope(action='po.binary')
-        elif candidate is not None and candidate._name=='ir.attachment':
+        elif candidate and candidate._name=='ir.attachment':
             attachment=candidate.sudo().exists()
             if not attachment:return self.env['purchase.order']._sph_po_deny('po.binary')
             if attachment.res_model=='purchase.order':

@@ -65,8 +65,8 @@ def execute(env,fx,rpc,audit_count,observed,rows,sessions):
 
     fx['approver'].sph_center_ids=[(5,0,0)];sync()
     denied(orders[0],'empty')
-    denied(env['purchase.order'].browse(2147483647),'missing')
     fx['approver'].sph_center_ids=[(6,0,centers[0].ids)];sync()
+    denied(env['purchase.order'].browse(2147483647),'missing')
     denied(orders[0]|orders[1],'mixed')
     denied(orders[1],'spoof',{'context':{'sph_center_id':centers[1].id}})
     grant=env.ref('sph_core.group_sph_po_hub')

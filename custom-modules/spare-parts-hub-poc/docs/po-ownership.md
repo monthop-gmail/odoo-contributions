@@ -30,11 +30,43 @@ Flow B explicitly scopes its approver to that synthetic center. No P0 actor has 
 hub-wide grant. Foreign-company unit setup explicitly authorizes its trusted
 fixture creator; the approver remains outside that company and must be denied.
 
-**Not complete I8/I9:** B7b still must wire the helper into sph_draft/review/check/
-confirm/approve/RFQ/digest/incident and all remaining section-G paths, then prove
-the full matrix including lines/mail/attachments. B7c owns remaining company and
-forged-context approval tests. Existing sudo capabilities not covered by this
-piece are not claimed center-safe. Do not describe B7a as pilot readiness.
+## B7b capability closure
+
+`approver()` invokes the same `_sph_po_scope` hook on POs (and the parent PO of
+purchase lines), before maker/role checks or any delegated write. This covers
+review, review-check/approval, confirmation, force approval, RFQ wizard and
+incident metadata. All state/date/identity writes check scope before transition
+checks. Draft editing checks scope before its maker-only operation. `_sph_digest`
+is scoped human authority; `_sph_digest_value` is a private internal audit snapshot
+only, avoiding recursive authorization while recording a denial. Neither private
+method is callable through native RPC. Public caller context cannot grant access.
+Bot force-approve retains the existing silent, unchanged-state denial when scope
+is valid; foreign/empty scope raises the same generic Unavailable as other paths.
+
+Global rules also intersect native access on PO lines, PO-linked messages and
+attachments. The latter rules resolve their parent projection at each search,
+not as cached PO IDs; normalized Odoo 19 Boolean search operators are supported.
+Native read/export permissions remain unchanged. Native-capable rollback actors
+prove positive and negative mail/attachment/line reads and search/count behavior;
+ordinary SPH actors still receive no new native Purchase ACL. Purchase portal and
+binary streaming check actual-user scope before native token elevation. Tokens
+are not a substitute for center membership. Returning a checked RFQ wizard does
+not send mail in this harness.
+
+Bindings cover every section-G capability, no membership, both A→B and B→A with
+one commercial parent, unknown/legacy-unassigned/revoked targets, spoofed context,
+atomic mixed batches, and human explicit hub grant/revoke. The unassigned row is
+emulated only by rollback-only schema/data setup, never by a business-method
+commit or a weakened create constraint. Live G3 additionally observes committed
+HTTP scope denials, unchanged states/reviewer/digest/receipts/quantities, bot group
+unions including hub/native managers, and portal/binary token denials. No native
+manager/hub grant remains on P0 actors after the matrix. Existing G1 union tests
+now explicitly assert same-center positive access, so membership cannot mask the
+bot/group-union negative checks.
+
+**B7c remains:** company policy/forged allowed-company context approval tests
+(I9) are separate and not claimed closed by the B7b center matrix. No multi-company
+or pilot-readiness claim is made here.
 
 P0 uses clean disposable databases; no upgrade/backfill of historical unowned POs
 is provided. No main merge, deploy, new credentials or real data is authorized.
