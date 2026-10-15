@@ -27,6 +27,7 @@ class TestAtomicReservation(TransactionCase):
                 order.with_user(self.env.ref('sph_core.fixture_user_'+role)).sph_reserve('FIXTURE denied')
 
             self.assertIs(type(cm.exception),UserError)
+
     def test_reserve_readback(self):
         order = self.order(); result = self.reserve(order)
         self.assertEqual(result['status'],'reserved')
@@ -55,7 +56,8 @@ class TestAtomicReservation(TransactionCase):
 
     def test_reserve_beyond_free_denied(self):
         order = self.order(2)
-        with self.assertRaises(UserError): self.reserve(order as cm:
+        with self.assertRaises(UserError) as cm:
+            self.reserve(order)
         self.assertIs(type(cm.exception),UserError)
         self.assertEqual(order.state,'sale')
         self.assertFalse(order.sph_reservation_ids)
@@ -65,7 +67,8 @@ class TestAtomicReservation(TransactionCase):
         move = order.sph_reservation_ids.move_id
         move.quantity = 2
         move.picked = True
-        with self.assertRaises(UserError): move.picking_id.button_validate( as cm:
+        with self.assertRaises(UserError) as cm:
+            move.picking_id.button_validate()
         self.assertIs(type(cm.exception),UserError)
         self.assertNotEqual(move.state,'done')
 
@@ -101,12 +104,14 @@ class TestAtomicReservation(TransactionCase):
             self.env['stock.quant']._update_available_quantity(product,location,-2)
 
         self.assertIs(type(cm.exception),UserError)
+
     def test_readonly_reserve_cannot_confirm(self):
         order=self.order(confirm=False)
         for role in ('sph_hub_operator','sph_warehouse_picker'):
             scoped=order.with_user(self.env.ref('sph_core.fixture_user_'+role))
             with self.assertRaises(AccessError): scoped.check_access('write')
-            with self.assertRaises(UserError): scoped.sph_reserve('FIXTURE no confirmation' as cm:
+            with self.assertRaises(UserError) as cm:
+                scoped.sph_reserve('FIXTURE no confirmation')
             self.assertIs(type(cm.exception),UserError)
         self.assertEqual(order.state,'draft')
         self.assertFalse(order.picking_ids)
@@ -144,6 +149,7 @@ class TestAtomicReservation(TransactionCase):
             missing.with_user(actor).sph_reserve('FIXTURE missing')
 
         self.assertIs(type(cm.exception),UserError)
+
     def test_reserve_exact_location_ignores_child_stock(self):
         order=self.order()
         product=order.order_line.product_id
