@@ -252,3 +252,48 @@ class TestPOCenterScope(TransactionCase):
         for row in (msg,attachment):
             self.assertFalse(row.with_user(user).sph_po_visible)
             self.denied(lambda:row.with_user(user).read(['id']))
+
+    def test_system_sudo_without_membership_denied(self):
+        root=self.env.ref('base.user_root')
+        root.sph_center_ids=[Command.clear()]
+        cron_actor=self.env['res.users'].with_context(no_reset_password=True).create({
+            'name':'FIXTURE cron-like approver','login':'fixture_cron_approver',
+            'group_ids':[Command.set(self.env.ref('sph_core.group_sph_purchasing_approver').ids)],
+            'sph_center_ids':[Command.clear()]})
+        before=self.snapshot(self.orders[0]|self.orders[1])
+        for actor in (root,cron_actor):
+            self.assertFalse(actor.sph_center_ids)
+            for values in ({'state':'purchase'},{'date_approve':False},{'locked':True}):
+                self.denied(lambda:self.orders[0].with_user(actor).sudo().write(values))
+        self.assertEqual(self.snapshot(self.orders[0]|self.orders[1]),before)
+
+    def test_approval_predicate_denies_by_exception(self):
+        # Native predicate callers must handle a denial, not expect False.
+        self.denied(lambda:self.orders[0].with_user(self.bots[0])._approval_allowed())
+        self.users[0].sph_center_ids=[Command.clear()]
+        self.denied(lambda:self.orders[0].with_user(self.users[0])._approval_allowed())
+
+    def test_receipt_rule_explicit_membership(self):
+        receipts=[]
+        for user,po in zip(self.users,self.orders):
+            po.with_user(user).sph_review();po.with_user(user).button_confirm()
+            self.assertTrue(po.picking_ids)
+            self.assertEqual(po.picking_ids.sph_center_id,po.sph_center_id)
+            receipts.append(po.picking_ids.ensure_one())
+        actor=self.env.ref('sph_core.fixture_user_native_actor')
+        self.assertFalse(actor.sph_center_ids)
+        self.assertFalse(actor.has_group('sph_core.group_sph_po_hub'))
+        rule=self.env.ref('sph_core.scope_stock_picking')
+        self.assertNotIn('_sph_scoped',rule.domain_force)
+        for receipt in receipts:
+            with self.assertRaises(AccessError):receipt.with_user(actor).read(['name'])
+        self.assertFalse(self.env['stock.picking'].with_user(actor).search([('id','in',[r.id for r in receipts])]))
+        actor.sph_center_ids=[Command.set(self.centers[0].ids)]
+        self.assertTrue(receipts[0].with_user(actor).read(['name']))
+        with self.assertRaises(AccessError):receipts[1].with_user(actor).read(['name'])
+        self.assertEqual(self.env['stock.picking'].with_user(actor).search_count([('id','in',[r.id for r in receipts])]),1)
+        actor.sph_center_ids=[Command.clear()]
+        actor.group_ids=[Command.link(self.env.ref('sph_core.group_sph_po_hub').id)]
+        self.assertEqual(self.env['stock.picking'].with_user(actor).search_count([('id','in',[r.id for r in receipts])]),2)
+        actor.group_ids=[Command.unlink(self.env.ref('sph_core.group_sph_po_hub').id)]
+        self.assertFalse(self.env['stock.picking'].with_user(actor).search([('id','in',[r.id for r in receipts])]))

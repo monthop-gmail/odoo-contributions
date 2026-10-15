@@ -58,6 +58,11 @@ class PurchaseScope(models.Model):
         elif not self.env.su:self._sph_po_scope(action='po.write')
         return super().write(values)
 
+    def _prepare_picking(self):
+        values=super()._prepare_picking()
+        values['sph_center_id']=self.sudo().sph_center_id.id
+        return values
+
     def check_access(self,operation):
         if self.env.su:return super().check_access(operation)
         self._sph_po_scope(action='po.access')

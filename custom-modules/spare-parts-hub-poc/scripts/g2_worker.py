@@ -16,6 +16,12 @@ product = env.ref('sph_core.fixture_part_04').product_variant_id
 warehouse = env.ref('sph_core.fixture_wh_central')
 env.cr.execute('SHOW transaction_isolation')
 isolation=env.cr.fetchone()[0]
+# Test-only explicit visibility for the native competitor, never a seed default.
+native_actor=env.ref('sph_core.fixture_user_native_actor')
+native_groups=native_actor.group_ids.ids
+hub_grant=env.ref('sph_core.group_sph_po_hub')
+assert not native_actor.has_group('sph_core.group_sph_po_hub')
+native_actor.group_ids=[Command.link(hub_grant.id)]
 roles = ('sph_hub_operator','sph_warehouse_picker','native_actor')
 sessions = []
 for role in roles:
@@ -182,5 +188,8 @@ expiry_evidence={'cron_active':True,'entrypoint':'ir.cron.method_direct_trigger'
     'expired_state':'expired','native_move_quantity':0,'native_quant_reserved':0}
 assert {row['winner_actor'] for row in results if row['mode']=='sph_vs_native_assign'}=={'sph','native'}
 assert any(row['observed_lock_waiters']>=2 for row in results), 'UNRUNNABLE: no witnessed contention'
+native_actor.group_ids=[Command.set(native_groups)]
+env.cr.commit();env.registry.clear_cache();env.registry.signal_changes()
+assert not native_actor.has_group('sph_core.group_sph_po_hub')
 print('SPH_G2_RESULT '+json.dumps({'round_count':rounds,'double_allocations':0,
     'expiry':expiry_evidence,'isolation':isolation,'lock_wait_rounds':sum(row['observed_lock_waiters']>=2 for row in results),'rounds':results}),flush=True)

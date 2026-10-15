@@ -70,3 +70,21 @@ or pilot-readiness claim is made here.
 
 P0 uses clean disposable databases; no upgrade/backfill of historical unowned POs
 is provided. No main merge, deploy, new credentials or real data is authorized.
+
+## B7c Part 0 — system actors, predicate and receipts
+
+PO state/date/locked gates run under sudo using the actual `env.user`. A system,
+uid-1 or cron-like actor without center membership is denied; sudo is not a
+membership or approver grant. Do not enable a native PO automation expecting an
+implicit privileged bypass. `_approval_allowed()` now raises
+`AccessError('Unavailable')` on denial rather than returning False. Existing SPH
+callers propagate that exception; no caller relies on a False return.
+
+`stock.picking` no longer uses `_sph_scoped()` fallthrough: visibility requires
+explicit membership, or the same explicit hub visibility grant as POs. Native
+ACLs remain unchanged. PO-created receipts inherit the PO center server-side.
+The dedicated native G2 competitor receives the explicit visibility grant only
+inside its disposable race worker and revokes it before successful completion;
+this preserves both native/SPH race outcomes without granting stock-manager to
+an SPH role or seeding hub visibility. Native receipt tests cover empty scope,
+same-center allow, cross-center deny and explicit-grant revoke.
