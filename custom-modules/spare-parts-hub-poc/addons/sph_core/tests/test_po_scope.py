@@ -107,3 +107,109 @@ class TestPOCenterScope(TransactionCase):
         po=self.orders[0]
         self.denied(lambda:po.with_user(self.users[0]).write({'sph_center_id':self.centers[1].id}))
         self.assertEqual(po.sph_center_id,self.centers[0])
+
+    def snapshot(self,orders):
+        return [(po.id,po.state,po.sph_review_digest,po.sph_reviewer_uid,
+            po.sph_incident_ref,po.picking_ids.ids,po.order_line.mapped('product_qty')) for po in orders.sudo()]
+
+    def entrypoints(self,record):
+        return {
+            'draft':lambda:record.sph_draft(quantity=2),
+            'review':lambda:record.sph_review(),
+            'check':lambda:record._sph_check_review(),
+            'allowed':lambda:record._approval_allowed(),
+            'confirm':lambda:record.button_confirm(),
+            'approve':lambda:record.button_approve(force=True),
+            'state':lambda:record.write({'state':'purchase'}),
+            'date':lambda:record.write({'date_approve':False}),
+            'identity':lambda:record.write({'sph_reviewer_uid':record.env.uid}),
+            'rfq':lambda:record.action_rfq_send(),
+            'digest':lambda:record._sph_digest(),
+            'incident':lambda:record.write({'sph_incident_ref':'fixture:scope'}),
+            'locked':lambda:record.write({'locked':True}),
+        }
+
+    def deny_matrix(self,record):
+        all_orders=self.orders[0]|self.orders[1]
+        before=self.snapshot(all_orders)
+        for name,operation in self.entrypoints(record).items():
+            with self.subTest(path=name):self.denied(operation)
+            self.assertEqual(self.snapshot(all_orders),before)
+
+    def test_remaining_entrypoints_bidirectional_scope(self):
+        for index,user in enumerate(self.users):
+            self.deny_matrix(self.orders[1-index].with_user(user))
+
+    def test_remaining_entrypoints_empty_membership(self):
+        user=self.users[0];user.sph_center_ids=[Command.clear()]
+        self.deny_matrix(self.orders[0].with_user(user))
+        self.denied(lambda:self.env['purchase.order'].with_user(user).create({
+            'partner_id':self.supplier.id,'sph_incident_ref':'fixture:scope'}))
+
+    def test_unknown_unassigned_and_revoked_scope(self):
+        user=self.users[0]
+        self.deny_matrix(self.env['purchase.order'].browse(2147483647).with_user(user))
+        # Only emulate an impossible-on-create legacy row inside this rollback test.
+        self.env.cr.execute('ALTER TABLE purchase_order ALTER COLUMN sph_center_id DROP NOT NULL')
+        self.env.cr.execute('UPDATE purchase_order SET sph_center_id=NULL WHERE id=%s',[self.orders[1].id])
+        self.orders[1].invalidate_recordset(['sph_center_id'])
+        self.deny_matrix(self.orders[1].with_user(user))
+        self.orders[0].with_user(user).sph_review()
+        user.sph_center_ids=[Command.clear()]
+        self.deny_matrix(self.orders[0].with_user(user))
+
+    def test_mixed_batch_atomic_and_center_context_spoof(self):
+        user=self.users[0]
+        self.deny_matrix((self.orders[0]|self.orders[1]).with_user(user))
+        for key in ('center_id','sph_center_id','default_center_id','default_sph_center_id'):
+            self.deny_matrix(self.orders[1].with_user(user).with_context(**{key:self.centers[1].id}))
+
+    def test_same_center_review_rfq_confirm_and_draft(self):
+        for index,user in enumerate(self.users):
+            po=self.orders[index]
+            self.assertEqual(po.with_user(self.bots[index]).sph_draft(quantity=2)['lines'][0]['quantity'],2)
+            human=po.with_user(user)
+            self.assertTrue(human.sph_review())
+            self.assertEqual(human._sph_digest(),po.sph_review_digest)
+            self.assertTrue(human.action_rfq_send())
+            human.write({'sph_incident_ref':'fixture:own'})
+            human.write({'locked':True});human.write({'locked':False})
+            human.button_confirm()
+            self.assertEqual(po.state,'purchase')
+            self.assertTrue(po.picking_ids)
+
+    def test_hub_grant_revoke_remaining_capabilities(self):
+        user=self.users[0];foreign=self.orders[1].with_user(user)
+        grant=self.env.ref('sph_core.group_sph_po_hub')
+        self.denied(lambda:foreign.sph_review())
+        user.group_ids=[Command.link(grant.id)]
+        self.assertTrue(foreign.sph_review())
+        self.assertTrue(foreign._sph_digest())
+        foreign.write({'sph_incident_ref':'fixture:grant'})
+        user.group_ids=[Command.unlink(grant.id)]
+        self.deny_matrix(foreign)
+
+    def test_po_lines_mail_attachments_authorized_only(self):
+        messages=[];attachments=[]
+        for po in self.orders:
+            messages.append(self.env['mail.message'].create({'model':'purchase.order','res_id':po.id,
+                'body':'FIXTURE PO thread','message_type':'comment'}))
+            attachments.append(self.env['ir.attachment'].create({'name':'FIXTURE PO attachment',
+                'raw':b'FIXTURE PO contents','res_model':'purchase.order','res_id':po.id}))
+        for index,user in enumerate(self.users):
+            foreign=1-index
+            for records,field in ((self.orders[index].order_line,'id'),(messages[index],'body'),(attachments[index],'raw')):
+                self.assertTrue(records.with_user(user).read([field]))
+            for records,field in ((self.orders[foreign].order_line,'id'),(messages[foreign],'body'),(attachments[foreign],'raw')):
+                self.denied(lambda:records.with_user(user).read([field]))
+            for model,records in (('purchase.order',self.orders),('purchase.order.line',[p.order_line for p in self.orders]),
+                    ('mail.message',messages),('ir.attachment',attachments)):
+                ids=[r.id for r in records];actor=self.env[model].with_user(user)
+                visible=actor.search([('id','in',ids)])
+                self.assertEqual(visible.ids,[ids[index]])
+                self.assertEqual(actor.search_count([('id','in',ids)]),1)
+            user.sph_center_ids=[Command.clear()]
+            for records,field in ((self.orders[index].order_line,'id'),(messages[index],'body'),(attachments[index],'raw')):
+                self.denied(lambda:records.with_user(user).read([field]))
+            for model,records in (('mail.message',messages),('ir.attachment',attachments)):
+                self.assertFalse(self.env[model].with_user(user).search([('id','in',[r.id for r in records])]))

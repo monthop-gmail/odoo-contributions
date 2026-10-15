@@ -103,5 +103,12 @@
   "TestPOCenterScope.test_explicit_hub_grant_and_revoke",
   "TestPOCenterScope.test_no_seeded_hub_grants_or_acl_implication",
   "TestPOCenterScope.test_owner_immutable",
-  "TestPurchaseAuthority.test_bot_hub_and_native_group_union_denied"
+  "TestPurchaseAuthority.test_bot_hub_and_native_group_union_denied",
+  "TestPOCenterScope.test_remaining_entrypoints_bidirectional_scope",
+  "TestPOCenterScope.test_remaining_entrypoints_empty_membership",
+  "TestPOCenterScope.test_unknown_unassigned_and_revoked_scope",
+  "TestPOCenterScope.test_mixed_batch_atomic_and_center_context_spoof",
+  "TestPOCenterScope.test_same_center_review_rfq_confirm_and_draft",
+  "TestPOCenterScope.test_hub_grant_revoke_remaining_capabilities",
+  "TestPOCenterScope.test_po_lines_mail_attachments_authorized_only"
 ]
