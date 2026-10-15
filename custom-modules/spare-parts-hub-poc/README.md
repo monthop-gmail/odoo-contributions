@@ -416,3 +416,17 @@ Runtime deny audits retain their separate committed cursor. Cleanup logs contain
 only a fixed failure label; cleanup failure cannot mask an existing scenario
 error, and a failed cleanup on an otherwise successful scenario fails closed.
 Flow B center, partner, reservist and bot now have stable fixture_flow_b_* xmlids.
+
+### M3 measured dashboard artifacts
+
+After the five real live cases pass, CI runs `scripts/dashboard.py` and includes
+`evidence/Dashboard.html` and `Dashboard-results.json` in sph-harness-evidence.
+Open the HTML locally after downloading the artifact. Rebuild with
+`python3 scripts/dashboard.py` when matching Flow A/B JSON and live-suite.xml exist.
+Formulas and derivation: [docs/dashboard-formulas.md](docs/dashboard-formulas.md).
+The report validates current SHA and fresh scenario DB snapshots; numeric record
+IDs are namespaced by scenario. No endpoint, ACL/group grant, fake KPI constant or
+SLA target is added. Open blockers means unfilled confirmed scenario orders; hub
+and pilot governance blockers are not measured. Dashboard failure fails CI after
+the separate five-case JUnit is written. The static live runner now invokes its
+unit-test entrypoint, including dashboard stale/unclean-input controls.

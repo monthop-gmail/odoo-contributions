@@ -40,3 +40,8 @@ class TestLiveSuite(unittest.TestCase):
         self.assertEqual(code,1)
         self.assertIsNotNone(suite.find("testcase[@name='flow_b']/failure"))
         self.assertIsNone(suite.find("testcase[@name='g3_authority']/failure"))
+
+
+if __name__=='__main__':
+    from test_dashboard import TestDashboard
+    unittest.main()

@@ -17,6 +17,9 @@ except Exception as error:
 """
     run=subprocess.run(DC+['exec','-T','odoo','odoo','shell']+ODOO_ARGS+
         ['--no-http','--log-level=error'],input=code,text=True,capture_output=True,timeout=120)
+    for line in run.stderr.splitlines():
+        if line.startswith('SPH_SESSION_CLEANUP_FAILURE:'):
+            print(line,file=sys.stderr,flush=True)
     lines=run.stdout.splitlines()
     results=[line for line in lines if line.startswith('SPH_FLOW_B_RESULT ')]
     if run.returncode or not results:

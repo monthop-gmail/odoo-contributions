@@ -65,4 +65,9 @@ def run_suite(junit_path=JUNIT):
     return 1 if failures or skips else 0
 
 
-if __name__=='__main__': raise SystemExit(run_suite())
+if __name__=='__main__':
+    code=run_suite()
+    if code==0:
+        from dashboard import execute
+        execute()
+    raise SystemExit(code)
