@@ -10,7 +10,10 @@ def visible_links(records,operator,value):
     if not user.has_group('sph_core.group_sph_po_hub'):
         domain.append(('sph_center_id','in',user.sudo().sph_center_ids.ids))
     ids=records.env['purchase.order'].sudo().search(domain).ids
-    return [('res_id','in' if (operator=='=' and value) or (operator=='!=' and not value) else 'not in',ids)]
+    # Odoo 19 normalizes Boolean comparisons to in/not in lists.
+    positive=bool(value) if operator in ('=','!=') else True in value
+    if operator in ('!=','not in'):positive=not positive
+    return [('res_id','in' if positive else 'not in',ids)]
 
 
 def link_read(records,model_field,parent,*args,**kwargs):
