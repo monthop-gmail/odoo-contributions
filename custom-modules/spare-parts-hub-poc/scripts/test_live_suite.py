@@ -11,16 +11,17 @@ from g2_race import Unrunnable
 
 
 class TestLiveSuite(unittest.TestCase):
-    def run_control(self,g1=None,g2=None):
+    def run_control(self,g1=None,g2=None,flow_b=None):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'live.xml'
-            with patch('live_suite.g1_http',side_effect=g1),patch('live_suite.g2_race',side_effect=g2),patch('live_suite.g3_authority'),contextlib.redirect_stdout(io.StringIO()):
+            with patch('live_suite.g1_http',side_effect=g1),patch('live_suite.g2_race',side_effect=g2),patch('live_suite.g3_authority'),patch('live_suite.flow_a'),patch('live_suite.flow_b',side_effect=flow_b),contextlib.redirect_stdout(io.StringIO()):
                 code=run_suite(path)
             return code,ET.parse(path).getroot()
 
     def test_both_real_stages_required(self):
         code,suite=self.run_control()
         self.assertEqual(code,0);self.assertEqual(suite.get('skipped'),'0')
+        self.assertEqual(suite.get('tests'),'5')
         self.assertEqual(suite.find("properties/property[@name='gate_acceptance']").get('value'),'G1-G3 PASS; G4 PENDING')
         self.assertEqual(suite.find("testcase[@name='g1_http']").get('classname'),'sph_live.g1_http')
 
@@ -33,3 +34,9 @@ class TestLiveSuite(unittest.TestCase):
     def test_failed_gate_is_nonzero(self):
         code,suite=self.run_control(g1=ConnectionError())
         self.assertEqual(code,1);self.assertEqual(suite.get('failures'),'1')
+
+    def test_flow_b_failure_has_dedicated_case(self):
+        code,suite=self.run_control(flow_b=RuntimeError())
+        self.assertEqual(code,1)
+        self.assertIsNotNone(suite.find("testcase[@name='flow_b']/failure"))
+        self.assertIsNone(suite.find("testcase[@name='g3_authority']/failure"))

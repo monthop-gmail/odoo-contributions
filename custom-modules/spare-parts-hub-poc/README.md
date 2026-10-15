@@ -375,3 +375,29 @@ before starting. Never point it at a non-disposable database or reuse its compos
 project for valuable data. Flow A now requires one company and deletes all of its
 server-side sessions on success or failure, including `--running`; evidence has
 no session IDs.
+
+### B6c: one-command synthetic Flow B
+
+From this folder run `python3 scripts/flow_b.py`: down -> clean pinned harness up
+-> Flow B -> always down. **WARNING:** it wipes this checkout's disposable volumes;
+never point it at any non-disposable DB. `--running` uses an existing disposable
+harness, and all created sessions are deleted in finally, including failed runs.
+
+The isolated Flow B seed is single-company, disposable-test-harness / sph_poc
+only, rejects demo/pilot profiles and creates no stock-manager grant. A new
+FIXTURE center/product has zero free stock. A scoped reservist's real HTTP
+reservation fails with Unavailable and no reservation. The existing bot calls
+sph_prepare to create only a draft RFQ. Its HTTP button_confirm is denied with a
+durable separate-cursor audit; an independent observer sees draft/no receipt.
+A distinct human approver reviews and confirms; evidence requires purchase state,
+a native receipt, bot maker != human checker, and a human allow-audit row. No
+receipt is validated, stock received or financial action performed.
+
+CI now has distinct live cases for G1, G2, G3, Flow A and Flow B (5 total), using
+the same scenario workers on the workflow's initialized disposable harness.
+Flow A retains every prior race assertion. Flow-B-results.json includes final
+commit SHA, pins, synthetic IDs, shortage/bot-denial/human-confirm outcomes and
+session cleanup status. Flow-B-assertions.xml is included with existing evidence
+in sph-harness-evidence; the GitHub artifact ID/digest is reported in the hub.
+These are synthetic scenario results, not pilot sign-off. Dashboard and War Room
+remain outside this round.
