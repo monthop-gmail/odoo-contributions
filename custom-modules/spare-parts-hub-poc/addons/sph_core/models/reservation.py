@@ -9,7 +9,8 @@ LOCK_NAMESPACE = 194556264
 
 
 def lock_stock(env, product, location):
-    # One advisory key per fixture product also covers absent/duplicate quant rows.
+    # Product key serializes participating operations; existing quant rows lock below.
+    # REPEATABLE READ conflicts still require the HTTP whole-request retry.
     env.cr.execute('SELECT pg_try_advisory_xact_lock(%s, %s)', [LOCK_NAMESPACE, product.id])
     if not env.cr.fetchone()[0]:
         _logger.info('SPH_LOCK_WAIT: fixture stock serialization')

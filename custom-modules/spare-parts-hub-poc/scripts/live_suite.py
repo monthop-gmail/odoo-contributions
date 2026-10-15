@@ -1,4 +1,4 @@
-"""Out-of-process live G1/G2 evidence; G3 is not implemented."""
+"""Out-of-process real G1/G2/G3 evidence; G4 sign-off remains pending."""
 from pathlib import Path
 import time
 import traceback
@@ -30,7 +30,7 @@ def run_suite(junit_path=JUNIT):
     ET.SubElement(properties,'property',name='scope',value='G1/G2/G3 real live evidence; G4 pending')
     failures=skips=0
     for name,runner in (('g1_http',g1_http),('g2_race',g2_race),('g3_authority',g3_authority)):
-        case=ET.SubElement(suite,'testcase',name=name,classname='sph_live')
+        case=ET.SubElement(suite,'testcase',name=name,classname='sph_live.'+name)
         started=time.monotonic()
         try:
             runner();print(name+': PASS (real live harness)')
@@ -46,6 +46,8 @@ def run_suite(junit_path=JUNIT):
             print(name+': FAIL')
         case.set('time',f'{time.monotonic()-started:.6f}')
     suite.set('failures',str(failures));suite.set('skipped',str(skips))
+    ET.SubElement(properties,'property',name='gate_acceptance',
+        value='G1-G3 PASS; G4 PENDING' if not failures and not skips else 'G1-G3 INCOMPLETE; G4 PENDING')
     path=Path(junit_path);path.parent.mkdir(exist_ok=True,parents=True)
     ET.indent(suite);ET.ElementTree(suite).write(path,encoding='utf-8',xml_declaration=True)
     # An unrunnable race never yields a green acceptance job.

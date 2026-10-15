@@ -169,17 +169,19 @@ no substitution or alternate location is selected. Central outgoing operations
 use manual reservation in the seed.
 
 The method locks the order for request replay, takes transaction-held product
-advisory locks (including absent quant rows), then locks every matching quant row
+advisory locks for participating operations, then locks every existing matching quant row
 in ID order before availability checks and native move assignment. Native quant
-updates participate in the same advisory/row lock protocol. No reserve method
+updates participate in the same advisory/row lock protocol. Advisory locking alone
+does not refresh a REPEATABLE READ snapshot or prove absent-quant correctness:
+row conflicts can require Odoo whole-request serialization retries. No reserve method
 commits; Odoo's HTTP transaction owns atomic commit/whole-request retries. FCFS
 means serialized confirmation at the stock lock; simultaneous arrivals have no
 invented center priority.
 
 All-or-nothing is the default. Explicit partial allocation retains outstanding
 demand, records a backorder amount and uses native delivery backorders. Reservations
-expire after 48 hours (FIXTURE policy), with a directly callable private cron
-method because harness cron is off. Expired requests cannot replay into a fresh
+expire after 48 hours (FIXTURE policy), through the installed active cron; CI invokes its entrypoint explicitly because
+scheduler threads are off. Expired requests cannot replay into a fresh
 reservation. Native quant constraints reject negative/over-reserved fixture stock;
 SPH delivery validation rejects quantities above the recorded reservation limit.
 Unavailable stock errors expose no quantities.
@@ -245,9 +247,8 @@ and observes the committed SO remains draft with no picking. Race loser rollback
 now means the previously confirmed order/picking remains unallocated, rather than
 claiming the order confirmation itself was part of reservation.
 
-Pre-G4 review #53/#55 F1/F2/P3 scheduling, native-actor/coverage, retry evidence,
-location coverage and labeling items remain separate follow-up work. This F3
-change does not claim those findings are closed or approve G4.
+The historical F3 change alone did not close the other #53/#55 findings.
+B5c and B5d coverage is recorded below; G4 remains pending.
 
 ## B5a: discount and pricelist authority
 
@@ -299,3 +300,30 @@ Both HTTP requests wait behind the external gate before release. The suite requi
 both actual winner outcomes, zero double allocation, and `Unavailable` for the SPH
 loser. `G2-request-results.json` and the manifest record launch order, winner actor,
 lock witnesses and cron-release evidence. B5d remains separate.
+
+### B5d review close-out scope
+
+PO purchase/done/date_approve writes require the private checked-button transition
+capability. Reviewed human direct writes are denied, including forged client
+context flags; normal confirmation still creates native receipts. `approver()`
+has no uid-1, sudo or cron exception (see AGENTS.md).
+
+The native assignment client uses the dedicated FIXTURE native actor. SPH picker
+membership is never widened; G2 checks it remains outside stock_manager. The two
+SPH reservation clients retain their original roles. Bound cross-center reserve
+denials cover both directions under a shared commercial parent.
+
+**Conservative location scope retained:** availability in `sph_reserve` and the
+band projection counts only quants exactly at central `lot_stock_id`, not
+`child_of`. Native assignment can consider descendants; therefore child-only
+stock can be rejected/understated. This PoC supports the flat synthetic location
+fixture only; it does not claim general hierarchical availability. Changing to
+`child_of` requires matching location locking/reconciliation tests, rather than a
+domain-only expansion. No business policy for child locations is inferred.
+
+G2-retry-serialization.log captures matching server transaction-conflict/retry
+lines and records their observed count in G2 results/manifest; no retry is invented
+if none appears. G2-lock-waits.log remains the required contention evidence.
+Live JUnit classnames identify each real gate; gate_acceptance reflects actual
+runner success/skips/failures and always keeps G4 PENDING. Historical #61 and the
+old blocked task are not implementation or G4 evidence.

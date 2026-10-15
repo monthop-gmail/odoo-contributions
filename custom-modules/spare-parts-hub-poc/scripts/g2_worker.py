@@ -16,7 +16,7 @@ product = env.ref('sph_core.fixture_part_04').product_variant_id
 warehouse = env.ref('sph_core.fixture_wh_central')
 env.cr.execute('SHOW transaction_isolation')
 isolation=env.cr.fetchone()[0]
-roles = ('sph_hub_operator','native_actor')
+roles = ('sph_hub_operator','sph_warehouse_picker','native_actor')
 sessions = []
 for role in roles:
     user = env.ref('sph_core.fixture_user_'+role)
@@ -37,7 +37,7 @@ def request(index, order, key, native=False):
             'method':'action_assign' if native else 'sph_reserve',
             'args':[[order]] if native else [[order],key],'kwargs':{}}})
         connection.request('POST','/web/dataset/call_kw',body,{
-            'Content-Type':'application/json','Cookie':'session_id='+sessions[index]})
+            'Content-Type':'application/json','Cookie':'session_id='+sessions[2 if native else index]})
         response=connection.getresponse()
         return json.loads(response.read())
     finally: connection.close()

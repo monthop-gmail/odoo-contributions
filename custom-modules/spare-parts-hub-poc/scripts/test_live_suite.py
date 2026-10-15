@@ -21,10 +21,13 @@ class TestLiveSuite(unittest.TestCase):
     def test_both_real_stages_required(self):
         code,suite=self.run_control()
         self.assertEqual(code,0);self.assertEqual(suite.get('skipped'),'0')
+        self.assertEqual(suite.find("properties/property[@name='gate_acceptance']").get('value'),'G1-G3 PASS; G4 PENDING')
+        self.assertEqual(suite.find("testcase[@name='g1_http']").get('classname'),'sph_live.g1_http')
 
     def test_unrunnable_is_skip_and_nonzero(self):
         code,suite=self.run_control(g2=Unrunnable())
         self.assertEqual(code,1);self.assertEqual(suite.get('skipped'),'1')
+        self.assertIn('INCOMPLETE',suite.find("properties/property[@name='gate_acceptance']").get('value'))
         self.assertIsNotNone(suite.find("testcase[@name='g2_race']/skipped"))
 
     def test_failed_gate_is_nonzero(self):

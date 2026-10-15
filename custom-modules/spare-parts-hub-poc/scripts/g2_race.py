@@ -42,6 +42,12 @@ except Exception as error:
     if not lock_lines:
         raise Unrunnable('No server-side lock witness')
     evidence=ROOT/'evidence';evidence.mkdir(exist_ok=True)
+    # Preserve sanitized server-side transaction-conflict/retry lines, not SQL dumps.
+    retry_lines=[line for line in logs.splitlines() if any(marker in line.lower()
+        for marker in ('serialization_failure','could not serialize access','serialization failure','retrying transaction'))]
+    (evidence/'G2-retry-serialization.log').write_text(
+        '\n'.join(retry_lines)+'\n' if retry_lines else 'No serialization/retry lines observed; lock contention witnessed separately.\n')
+    stats['retry_serialization_log_lines']=len(retry_lines)
     (evidence/'G2-lock-waits.log').write_text('\n'.join(lock_lines)+'\n')
     (evidence/'G2-request-results.json').write_text(json.dumps(stats,indent=2)+'\n')
     pins=json.loads((ROOT/'version-pins.json').read_text())
