@@ -33,11 +33,22 @@ class PurchaseAuthority(models.Model):
             raise AccessError('Unavailable')
         supplier=self.env['res.partner'].sudo().browse(supplier_id).exists()
         product=self.env['product.product'].sudo().browse(product_id).exists()
-        if not supplier or not supplier.sph_fixture or not product or not product.sph_fixture or quantity<=0:
+        if not supplier or not supplier.sph_fixture or not supplier.supplier_rank or not product or not product.sph_fixture or quantity<=0:
             raise AccessError('Unavailable')
         order=self.sudo().create({'partner_id':supplier.id,'order_line':[(0,0,{
             'product_id':product.id,'product_qty':quantity,'price_unit':101})]})
         return order.id
+
+    def sph_draft(self, quantity=None):
+        self.ensure_one()
+        order=self.sudo()
+        if order.sph_maker_uid != self.env.uid or order.state != 'draft':
+            raise AccessError('Unavailable')
+        if quantity is not None:
+            if quantity<=0: raise AccessError('Unavailable')
+            order.order_line.write({'product_qty':quantity})
+        return {'state':order.state,'lines':[{'product_id':line.product_id.id,
+            'quantity':line.product_qty,'price':line.price_unit} for line in order.order_line]}
 
     def sph_review(self):
         approver(self,'po.review',maker=True)

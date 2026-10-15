@@ -42,5 +42,6 @@
   "TestPurchaseAuthority.test_bot_inventory_denied",
   "TestPurchaseAuthority.test_approver_inventory_allowed",
   "TestPurchaseAuthority.test_bot_quant_write_denied",
-  "TestPurchaseAuthority.test_approver_quant_write_allowed"
+  "TestPurchaseAuthority.test_approver_quant_write_allowed",
+  "TestPurchaseAuthority.test_allow_audit_rolls_back_with_action"
 ]

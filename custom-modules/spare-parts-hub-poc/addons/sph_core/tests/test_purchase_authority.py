@@ -42,6 +42,7 @@ class TestPurchaseAuthority(TransactionCase):
     def test_ai_prepare_only(self):
         self.assertEqual(self.fx['po'].state,'draft')
         self.assertEqual(self.fx['po'].sph_maker_uid,self.fx['bot'].id)
+        self.assertEqual(self.fx['po'].with_user(self.fx['bot']).sph_draft(quantity=2)['lines'][0]['quantity'],2)
 
     def test_ai_confirm_approve_force_denied(self):
         self.deny('po','button_confirm')
@@ -107,3 +108,11 @@ class TestPurchaseAuthority(TransactionCase):
         self.allow('quant','action_apply_inventory');self.assertEqual(self.fx['quant'].quantity,7)
     def test_bot_quant_write_denied(self): self.deny('quant','write',{'quantity':7})
     def test_approver_quant_write_allowed(self): self.allow('quant','write',{'quantity':7})
+
+    def test_allow_audit_rolls_back_with_action(self):
+        before=self.env['sph.authority.audit'].search_count([])
+        class RollbackProbe(Exception): pass
+        with self.assertRaises(RollbackProbe), self.env.cr.savepoint():
+            self.allow('so_line','write',{'price_unit':113})
+            raise RollbackProbe()
+        self.assertEqual(self.env['sph.authority.audit'].search_count([]),before)
