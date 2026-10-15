@@ -3,17 +3,28 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError, MissingError
 
 
-def visible_links(records,operator,value):
-    # Evaluated at each ORM search, not an ID list frozen in ir.rule's cache.
+def visible_po_ids(records):
     user=records.env.user
     domain=[('company_id','in',list(set(records.env.companies.ids)&set(user.sudo().company_ids.ids)))]
     if not user.has_group('sph_core.group_sph_po_hub'):
         domain.append(('sph_center_id','in',user.sudo().sph_center_ids.ids))
-    ids=records.env['purchase.order'].sudo().search(domain).ids
+    return records.env['purchase.order'].sudo().search(domain).ids
+
+
+def visible_links(records,operator,value):
+    # Evaluated at each ORM search, not an ID list frozen in ir.rule's cache.
+    ids=visible_po_ids(records)
     # Odoo 19 normalizes Boolean comparisons to in/not in lists.
     positive=bool(value) if operator in ('=','!=') else True in value
     if operator in ('!=','not in'):positive=not positive
     return [('res_id','in' if positive else 'not in',ids)]
+
+
+def compute_visibility(records,model_field):
+    allowed=set(visible_po_ids(records))
+    for row in records:
+        linked=row.sudo()
+        row.sph_po_visible=linked[model_field]!='purchase.order' or linked.res_id in allowed
 
 
 def link_read(records,model_field,parent,*args,**kwargs):
@@ -50,8 +61,9 @@ class POMailScope(models.Model):
     _inherit='mail.message'
     sph_po_visible=fields.Boolean(compute='_compute_sph_po_visible',search='_search_sph_po_visible')
 
+    @api.depends_context('uid','allowed_company_ids')
     def _compute_sph_po_visible(self):
-        for row in self:row.sph_po_visible=False  # Search-only rule projection.
+        compute_visibility(self,'model')
 
     def _search_sph_po_visible(self,operator,value):
         return visible_links(self,operator,value)
@@ -64,8 +76,9 @@ class POAttachmentScope(models.Model):
     _inherit='ir.attachment'
     sph_po_visible=fields.Boolean(compute='_compute_sph_po_visible',search='_search_sph_po_visible')
 
+    @api.depends_context('uid','allowed_company_ids')
     def _compute_sph_po_visible(self):
-        for row in self:row.sph_po_visible=False
+        compute_visibility(self,'res_model')
 
     def _search_sph_po_visible(self,operator,value):
         return visible_links(self,operator,value)
