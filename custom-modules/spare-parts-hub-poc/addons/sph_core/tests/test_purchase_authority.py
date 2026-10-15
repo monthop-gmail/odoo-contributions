@@ -219,14 +219,14 @@ class TestPurchaseAuthority(TransactionCase):
     def lock_denied(self,key,method,values=None):
         record=self.fx[key]
         before=method in ('action_unlock','button_unlock')
-        record.locked=before
+        record.with_user(self.fx['approver']).locked=before
         with self.assertRaisesRegex(AccessError,'^Unavailable$'):
             getattr(record.with_user(self.fx['bot']),method)(*([values] if values else []))
         self.assertEqual(record.locked,before)
 
     def lock_allowed(self,key,method,values=None):
         record=self.fx[key]
-        record.locked=method in ('action_unlock','button_unlock')
+        record.with_user(self.fx['approver']).locked=method in ('action_unlock','button_unlock')
         self.allow(key,method,*([values] if values else []))
         self.assertEqual(record.locked,method not in ('action_unlock','button_unlock'))
 
