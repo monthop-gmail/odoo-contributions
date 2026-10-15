@@ -19,7 +19,7 @@ def case_statuses(path):
     suite=ET.parse(path).getroot()
     cases={case.get('name'):('FAIL' if any(case.find(tag) is not None for tag in ('failure','error'))
         else 'SKIP' if case.find('skipped') is not None else 'PASS') for case in suite.findall('testcase')}
-    if len(cases)!=5 or set(cases)!={'g1_http','g2_race','g3_authority','flow_a','flow_b'}:
+    if len(suite.findall('testcase'))!=5 or len(cases)!=5 or set(cases)!={'g1_http','g2_race','g3_authority','flow_a','flow_b'}:
         raise ValueError('Incomplete or duplicate live cases')
     if any(int(suite.get(key,'0')) for key in ('failures','errors','skipped')):
         raise ValueError('Nonzero live summary')
@@ -89,7 +89,7 @@ def execute(directory=None):
     text+='| INFO-B8-2 upgrade | '+report.get('upgrade',{}).get('status','UNKNOWN')+' |\n\n'
     text+='Measured dashboard: `'+json.dumps(metrics,sort_keys=True)+'`. Units: `'+json.dumps(report.get('dashboard',{}).get('units',{}))+'`.\n\n'
     text+='G3: `'+json.dumps(report.get('g3',{}))+'`. Bound: `'+json.dumps(report.get('bound',{}))+'`.\n\n'
-    text+='Upgrade: previous B7c installed, same DB updated to final tip; exactly one XMLID, same rule ID, unchanged total picking-rule IDs, picking-only grant and post-upgrade isolation. See JSON/logs for actual assertions.\n\n'
+    text+='Upgrade acceptance requires: previous B7c installed, same DB updated to final tip; exactly one XMLID, same rule ID, unchanged total picking-rule IDs, picking-only grant and post-upgrade isolation. See JSON/logs for the actual result; missing/failed checks do not pass.\n\n'
     text+='Evidence manifest SHA256: `'+report['artifact_digests']['evidence_manifest_sha256']+'`. Per-file/base-archive hashes in P0-report.json; report hash in P0-report.sha256. Final upload archive digest is recorded in hub after upload.\n\n'
     text+='DN-B8-1: **owner decision needed before P1**; global picking scope unchanged. INFO-B7b-4/5 remain backlog. Synthetic harness only; NOT pilot-ready. No staging/merge/deploy/spend/credentials/real data.\n'
     (directory/'P0-report.md').write_text(text)
