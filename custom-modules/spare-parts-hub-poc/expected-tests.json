@@ -121,5 +121,8 @@
   "TestPOCenterScope.test_forged_company_context_denied_even_under_sudo",
   "TestPOCenterScope.test_active_company_not_union_and_mixed_batch_atomic",
   "TestPOCenterScope.test_company_write_cannot_redirect_reviewed_order",
-  "TestPOCenterScope.test_malformed_company_context_fails_closed"
+  "TestPOCenterScope.test_malformed_company_context_fails_closed",
+  "TestPOCenterScope.test_picking_grant_no_seeded_or_implied_authority",
+  "TestPOCenterScope.test_po_and_picking_grants_are_independent",
+  "TestPOCenterScope.test_bot_either_visibility_grant_denies_authority"
 ]

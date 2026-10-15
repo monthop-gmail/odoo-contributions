@@ -371,3 +371,73 @@ class TestPOCenterScope(TransactionCase):
             self.denied(lambda:po.with_context(allowed_company_ids=value).sph_review())
         for value in (True,False,'1'):
             self.denied(lambda:po.with_context(force_company=value).sph_review())
+
+    def test_picking_grant_no_seeded_or_implied_authority(self):
+        po_grant=self.env.ref('sph_core.group_sph_po_hub')
+        picking_grant=self.env.ref('sph_core.group_sph_picking_hub')
+        for grant in (po_grant,picking_grant):
+            self.assertFalse(grant.implied_ids)
+            self.assertFalse(self.env['res.users'].search_count([('group_ids','in',grant.id)]))
+        rule=self.env.ref('sph_core.scope_stock_picking')
+        self.assertTrue(rule['global'])
+        self.assertIn('group_sph_picking_hub',rule.domain_force)
+        self.assertNotIn('group_sph_po_hub',rule.domain_force)
+        self.assertNotIn('_sph_scoped',rule.domain_force)
+        self.assertNotIn('group_sph_picking_hub',self.env.ref('sph_core.scope_purchase_order').domain_force)
+
+    def test_po_and_picking_grants_are_independent(self):
+        receipts=[]
+        for user,po in zip(self.users,self.orders):
+            po.with_user(user).sph_review();po.with_user(user).button_confirm()
+            receipts.append(po.picking_ids.ensure_one())
+        warehouse=self.env.ref('sph_core.fixture_wh_central')
+        untagged=self.env['stock.picking'].create({'picking_type_id':warehouse.int_type_id.id,
+            'location_id':warehouse.lot_stock_id.id,'location_dest_id':warehouse.lot_stock_id.id})
+        self.assertFalse(untagged.sph_center_id)
+        pickings=receipts+[untagged]
+        user=self.users[0]
+        # Existing native roles ONLY in rollback fixtures, not in P0 data or ACLs.
+        user.group_ids=[Command.link(self.env.ref('stock.group_stock_manager').id)]
+        user.sph_center_ids=[Command.clear()]
+        po_grant=self.env.ref('sph_core.group_sph_po_hub')
+        picking_grant=self.env.ref('sph_core.group_sph_picking_hub')
+        po_model=self.env['purchase.order'].with_user(user)
+        picking_model=self.env['stock.picking'].with_user(user)
+        po_ids=[po.id for po in self.orders];picking_ids=[p.id for p in pickings]
+        self.denied(lambda:po_model.search([('id','in',po_ids)]))
+        self.assertFalse(picking_model.search([('id','in',picking_ids)]))
+        user.group_ids=[Command.link(po_grant.id)]
+        self.assertFalse(user.has_group('sph_core.group_sph_picking_hub'))
+        self.assertEqual(po_model.search_count([('id','in',po_ids)]),2)
+        for po in self.orders:self.assertTrue(po.with_user(user).read(['name']))
+        self.assertFalse(picking_model.search([('id','in',picking_ids)]))
+        for picking in pickings:
+            with self.assertRaises(AccessError):picking.with_user(user).read(['name'])
+        user.group_ids=[Command.unlink(po_grant.id),Command.link(picking_grant.id)]
+        self.assertFalse(user.has_group('sph_core.group_sph_po_hub'))
+        self.denied(lambda:po_model.search([('id','in',po_ids)]))
+        for po in self.orders:self.denied(lambda:po.with_user(user).read(['name']))
+        self.assertEqual(picking_model.search_count([('id','in',picking_ids)]),3)
+        for picking in pickings:self.assertTrue(picking.with_user(user).read(['name']))
+        user.group_ids=[Command.unlink(picking_grant.id)]
+        self.assertFalse(picking_model.search([('id','in',picking_ids)]))
+        self.denied(lambda:po_model.search([('id','in',po_ids)]))
+
+    def test_bot_either_visibility_grant_denies_authority(self):
+        bot=self.bots[0];po=self.orders[0];original=bot.group_ids.ids
+        for xmlid in ('sph_core.group_sph_po_hub','sph_core.group_sph_picking_hub'):
+            bot.group_ids=[Command.set(original)]+[Command.link(self.env.ref(key).id) for key in (
+                xmlid,'sph_core.group_sph_purchasing_approver','purchase.group_purchase_manager',
+                'stock.group_stock_manager')]
+            other='sph_core.group_sph_picking_hub' if xmlid.endswith('po_hub') else 'sph_core.group_sph_po_hub'
+            self.assertFalse(bot.has_group(other))
+            self.assertEqual(bot.sph_center_ids,po.sph_center_id)
+            po.with_user(bot).check_access('read')  # Denials cannot be masked by native read ACL.
+            before=self.snapshot(po)
+            for method in ('sph_review','button_confirm','action_rfq_send','_approval_allowed'):
+                self.denied(lambda:getattr(po.with_user(bot),method)())
+            for values in ({'state':'purchase'},{'sph_incident_ref':'fixture:bot:grant'},{'locked':True}):
+                self.denied(lambda:po.with_user(bot).write(values))
+            po.with_user(bot).button_approve(force=True)
+            self.assertEqual(self.snapshot(po),before)
+            self.assertFalse(po.picking_ids)
