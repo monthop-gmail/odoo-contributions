@@ -192,6 +192,51 @@ for method in ('button_approve','button_confirm'):
     observed(fx['maker_po'],'approver','po.approve','deny',before)
 with env.registry.cursor() as cursor:
     assert api.Environment(cursor,SUPERUSER_ID,{})['purchase.order'].browse(fx['maker_po'].id).state=='draft'
+# B7a: committed ownership/scope checks. No native Purchase ACL is granted here.
+original_centers=fx['approver'].sph_center_ids.ids
+prepared=rpc('approver',env['purchase.order'],'sph_prepare',
+    [fx['supplier'].id,fx['product'].id],model_call=True)
+assert 'error' not in prepared
+owned_po=env['purchase.order'].browse(prepared['result'])
+with env.registry.cursor() as cursor:
+    checked=api.Environment(cursor,SUPERUSER_ID,{})['purchase.order'].browse(owned_po.id)
+    assert checked.sph_center_id.id==original_centers[0] and checked.sph_maker_uid==fx['approver'].id
+for kwargs,action in (({'sph_center_id':env.ref('sph_core.fixture_center_shared_b').id},'po.prepare'),
+        ({'context':{'default_sph_center_id':env.ref('sph_core.fixture_center_shared_b').id}},'po.owner')):
+    before=audit_count(env['purchase.order'],'approver',action,'deny')
+    response=rpc('approver',env['purchase.order'],'sph_prepare',
+        [fx['supplier'].id,fx['product'].id],kwargs,model_call=True)
+    assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+    observed(env['purchase.order'],'approver',action,'deny',before)
+fx['approver'].sph_center_ids=[(5,0,0)]
+env.cr.commit();env.registry.clear_cache();env.registry.signal_changes()
+for record,method,args,model_call,action in (
+        (env['purchase.order'],'create',[{'partner_id':fx['supplier'].id}],True,'po.owner'),
+        (env['purchase.order'],'sph_prepare',[fx['supplier'].id,fx['product'].id],True,'po.owner'),
+        (owned_po,'read',[['name']],False,'po.scope'),
+        (env['purchase.order'],'search',[[]],True,'po.scope'),
+        (owned_po,'export_data',[['name']],False,'po.scope')):
+    before=audit_count(env['purchase.order'],'approver',action,'deny')
+    response=rpc('approver',record,method,args,model_call=model_call)
+    assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+    observed(env['purchase.order'],'approver',action,'deny',before)
+    rows[-1]['path']='no_membership_'+method
+# Test-only exception: it grants scope, not a native ACL or business approval.
+grant=env.ref('sph_core.group_sph_po_hub')
+fx['approver'].group_ids=[(4,grant.id)]
+env.cr.commit();env.registry.clear_cache();env.registry.signal_changes()
+allow(owned_po,'write','incident.reference',[{'sph_incident_ref':'fixture:incident:explicit-hub'}])
+rows[-1]['path']='explicit_hub'
+fx['approver'].group_ids=[(3,grant.id)]
+env.cr.commit();env.registry.clear_cache();env.registry.signal_changes()
+before=audit_count(env['purchase.order'],'approver','incident.reference','deny')
+response=rpc('approver',owned_po,'write',[{'sph_incident_ref':'fixture:incident:revoked'}])
+assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+observed(env['purchase.order'],'approver','incident.reference','deny',before)
+rows[-1]['path']='revoked_hub'
+fx['approver'].sph_center_ids=[(6,0,original_centers)]
+env.cr.commit();env.registry.clear_cache();env.registry.signal_changes()
+assert not env['res.users'].search_count([('group_ids','in',grant.id)])
 print('SPH_G3_RESULT '+json.dumps({'matrix':rows,'deny_rows_observed':sum(r['outcome']=='deny' for r in rows),
     'allow_rows_observed':sum(r['outcome']=='allow' for r in rows),'po_state':'purchase',
     'maker_checker_distinct':True,'settings':{'validation':'two_step','amount':0}}),flush=True)
