@@ -5,6 +5,16 @@ from odoo import api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError
 from odoo.tools import config
 
+_TRANSITION = ContextVar('sph_purchase_transition', default=False)
+
+
+@contextmanager
+def purchase_transition():
+    token=_TRANSITION.set(True)
+    try: yield
+    finally: _TRANSITION.reset(token)
+
+
 _DRAFT = ContextVar('sph_preparing_draft', default=False)
 
 
@@ -49,6 +59,7 @@ def audit(records, action, outcome, before_state=None):
 
 
 def approver(records, action, maker=False):
+    # No uid-1, sudo or cron exception: the actual actor must have this role.
     user=records.env.user
     allowed=user.active and not user.has_group('sph_core.group_sph_bot') and user.has_group('sph_core.group_sph_purchasing_approver')
     if maker:

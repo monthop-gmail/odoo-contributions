@@ -57,5 +57,6 @@
   "TestPurchaseAuthority.test_bot_scrap_done_write_denied",
   "TestPurchaseAuthority.test_bot_quant_create_denied",
   "TestPurchaseAuthority.test_bot_update_available_quantity_denied",
-  "TestAtomicReservation.test_expiry_cron_registered_active"
+  "TestAtomicReservation.test_expiry_cron_registered_active",
+  "TestPurchaseAuthority.test_approver_direct_state_transition_denied"
 ]

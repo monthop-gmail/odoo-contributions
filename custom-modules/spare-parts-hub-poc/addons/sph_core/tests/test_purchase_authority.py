@@ -30,7 +30,7 @@ class TestPurchaseAuthority(TransactionCase):
         self.fx=prepare(self.env)
 
     def deny(self,key,method,*args,**kwargs):
-        with self.assertRaises(AccessError):
+        with self.assertRaisesRegex(AccessError, 'Unavailable'):
             getattr(self.fx[key].with_user(self.fx['bot']),method)(*args,**kwargs)
 
     def allow(self,key,method,*args,**kwargs):
@@ -201,3 +201,15 @@ class TestPurchaseAuthority(TransactionCase):
             self.env['stock.quant'].with_user(self.fx['bot'])._update_available_quantity(
                 self.fx['product'],self.fx['quant'].location_id,quantity=1)
         self.assertEqual((self.fx['quant'].quantity,self.fx['quant'].reserved_quantity),before)
+
+    def test_approver_direct_state_transition_denied(self):
+        self.allow('po','sph_review')
+        for values in ({'state':'purchase'},{'state':'done'},{'date_approve':'2026-01-01 00:00:00'}):
+            with self.assertRaisesRegex(AccessError,'Unavailable'):
+                self.fx['po'].with_user(self.fx['approver']).with_context(
+                    sph_purchase_transition=True).write(values)
+        self.assertEqual(self.fx['po'].state,'draft')
+        self.assertFalse(self.fx['po'].picking_ids)
+        self.allow('po','button_confirm')
+        self.assertEqual(self.fx['po'].state,'purchase')
+        self.assertTrue(self.fx['po'].picking_ids)

@@ -2,7 +2,7 @@ import hashlib
 import json
 from odoo import api, fields, models
 from odoo.exceptions import AccessError
-from .authority import approver, audit, preparing_draft
+from .authority import approver, audit, preparing_draft, purchase_transition, _TRANSITION
 
 
 class PurchaseAuthority(models.Model):
@@ -84,7 +84,8 @@ class PurchaseAuthority(models.Model):
 
     def button_confirm(self):
         self._sph_check_review()
-        result=super(PurchaseAuthority,self.sudo()).button_confirm()
+        with purchase_transition():
+            result=super(PurchaseAuthority,self.sudo()).button_confirm()
         audit(self,'po.confirm','allow')
         return result
 
@@ -93,7 +94,8 @@ class PurchaseAuthority(models.Model):
             audit(self,'po.approve','deny')
             return {}  # Assert unchanged state; a silent native-style refusal.
         self._sph_check_review()
-        result=super(PurchaseAuthority,self.sudo()).button_approve(force=force)
+        with purchase_transition():
+            result=super(PurchaseAuthority,self.sudo()).button_approve(force=force)
         audit(self,'po.approve','allow')
         return result
 
@@ -106,6 +108,8 @@ class PurchaseAuthority(models.Model):
                 audit(self,'po.identity','deny');raise AccessError('Unavailable')
         if values.get('state') in ('purchase','done') or 'date_approve' in values:
             self._sph_check_review()
+            if not _TRANSITION.get():
+                audit(self,'po.transition','deny');raise AccessError('Unavailable')
         if self.env.user.has_group('sph_core.group_sph_bot') and (
             any(order.sudo().state != 'draft' for order in self) or values.get('state','draft') != 'draft'):
             audit(self,'po.write','deny');raise AccessError('Unavailable')

@@ -12,3 +12,9 @@ Reviewer: monthop-gmail
 - Pin changes must update `version-pins.json` and runtime inventory, then pass
   static checks and the clean disposable harness test. Never skip a mismatch.
 - G3 acceptance requires the real live authority suite; G4 remains pending.
+
+- `approver()` deliberately has no uid-1, sudo or cron exemption. Automated/admin
+  callers must satisfy the actual active human approver role and maker/checker
+  checks; do not add a privileged bypass. PO purchase/done/date_approve writes
+  require the private server transition capability entered by checked
+  button_confirm/button_approve, never a client context flag.

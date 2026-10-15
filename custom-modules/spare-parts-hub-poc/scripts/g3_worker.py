@@ -114,6 +114,13 @@ for key,method,action,args in (
         with env.registry.cursor() as cursor:
             assert api.Environment(cursor,SUPERUSER_ID,{})['stock.quant'].browse(fx['quant'].id).quantity==6
 allow(fx['po'],'sph_review','po.review')
+before=audit_count(fx['po'],'approver','po.transition','deny')
+response=rpc('approver',fx['po'],'write',[{'state':'purchase'}],{'context':{'sph_purchase_transition':True}})
+assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+observed(fx['po'],'approver','po.transition','deny',before)
+with env.registry.cursor() as cursor:
+    checked=api.Environment(cursor,SUPERUSER_ID,{})['purchase.order'].browse(fx['po'].id)
+    assert checked.state=='draft' and not checked.picking_ids
 allow(fx['po'],'button_confirm','po.confirm')
 with env.registry.cursor() as cursor:
     observer=api.Environment(cursor,SUPERUSER_ID,{})
