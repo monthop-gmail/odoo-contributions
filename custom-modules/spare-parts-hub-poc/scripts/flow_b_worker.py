@@ -8,6 +8,7 @@ from odoo.http import root
 sessions={}
 try:
     assert env.cr.dbname=='sph_poc'
+    existing_sales_before=env['sale.order'].search_count([])
     assert env.company.po_double_validation=='two_step' and env.company.po_double_validation_amount==0
     seed=env['sph.center']._seed_flow_b(profile='disposable-test-harness')
     center=env['sph.center'].browse(seed['center_id'])
@@ -72,6 +73,14 @@ try:
             'state_after_bot_denial':'draft','final_po_state':po.state,'receipt_ids':po.picking_ids.ids,
             'maker_uid':po.sph_maker_uid,'checker_uid':po.sph_reviewer_uid,'maker_checker_distinct':True,
             'human_confirm_allow_audit':True}
+        measured_orders=observer['sale.order'].browse([order.id])
+        result['measurements']={'existing_sales_before':existing_sales_before,
+            'orders':[{'so_id':so.id,'state':so.state,
+                'requested_qty':sum(so.order_line.filtered(lambda line:not line.display_type).mapped('product_uom_qty')),
+                'reserved_qty':sum(so.picking_ids.move_ids.filtered(lambda move:move.state not in ('done','cancel')).mapped('quantity'))}
+                for so in measured_orders],
+            'backorder_picking_ids':measured_orders.picking_ids.filtered(lambda picking:bool(picking.backorder_id)).ids,
+            'stockout_so_ids':[order.id]}
 finally:
     scenario_failed=sys.exc_info()[0] is not None
     cleanup_failed=False

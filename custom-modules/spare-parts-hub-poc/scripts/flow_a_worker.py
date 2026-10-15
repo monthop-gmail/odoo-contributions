@@ -11,6 +11,7 @@ from odoo.addons.sph_core.models.reservation import LOCK_NAMESPACE
 sessions=[]
 try:
     assert env.cr.dbname=='sph_poc'
+    existing_sales_before=env['sale.order'].search_count([])
     seed=env['sph.center']._seed_flow_a(profile='disposable-test-harness')
     product=env['product.product'].browse(seed['product_id'])
     orders=[];sessions=[]
@@ -78,6 +79,14 @@ try:
             'winners':1,'losers':1,'loser_message':'Unavailable','initial_free':1,
             'reserved_total':1,'double_allocations':0,'negative_stock':False,'observed_lock_waiters':waiters,
             'sales_confirmation':'authorized synthetic setup before reservation'}
+        measured_orders=observer['sale.order'].browse(orders)
+        result['measurements']={'existing_sales_before':existing_sales_before,
+            'orders':[{'so_id':so.id,'state':so.state,
+                'requested_qty':sum(so.order_line.filtered(lambda line:not line.display_type).mapped('product_uom_qty')),
+                'reserved_qty':sum(so.picking_ids.move_ids.filtered(lambda move:move.state not in ('done','cancel')).mapped('quantity'))}
+                for so in measured_orders],
+            'backorder_picking_ids':measured_orders.picking_ids.filtered(lambda picking:bool(picking.backorder_id)).ids,
+            'stockout_so_ids':[orders[losers[0]]]}
 finally:
     scenario_failed=sys.exc_info()[0] is not None
     cleanup_failed=False
