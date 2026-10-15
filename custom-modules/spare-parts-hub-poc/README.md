@@ -386,7 +386,7 @@ harness, and all created sessions are deleted in finally, including failed runs.
 The isolated Flow B seed is single-company, disposable-test-harness / sph_poc
 only, rejects demo/pilot profiles and creates no stock-manager grant. A new
 FIXTURE center/product has zero free stock. A scoped reservist's real HTTP
-reservation fails with Unavailable and no reservation. The existing bot calls
+reservation fails with Unavailable and no reservation. A dedicated FIXTURE FLOW B bot with the existing sph_bot role calls
 sph_prepare to create only a draft RFQ. Its HTTP button_confirm is denied with a
 durable separate-cursor audit; an independent observer sees draft/no receipt.
 A distinct human approver reviews and confirms; evidence requires purchase state,
@@ -401,3 +401,5 @@ session cleanup status. Flow-B-assertions.xml is included with existing evidence
 in sph-harness-evidence; the GitHub artifact ID/digest is reported in the hub.
 These are synthetic scenario results, not pilot sign-off. Dashboard and War Room
 remain outside this round.
+
+Flow B uses a separate bot fixture so G1's deliberately widened group-union bot stays untouched; no G1/G3 test grants or assertions are removed.
