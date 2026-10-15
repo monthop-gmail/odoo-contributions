@@ -11,7 +11,7 @@ def prepare(env):
     supplier=env.ref('sph_core.fixture_supplier_1')
     po_id=env['purchase.order'].with_user(bot).sph_prepare(supplier.id,product.id)
     po=env['purchase.order'].browse(po_id)
-    center=env.ref('sph_core.fixture_center_independent_a')
+    center=bot.sph_center_ids.ensure_one()
     sale=env['sale.order'].create({'partner_id':center.partner_id.id,'sph_center_id':center.id,
         'order_line':[Command.create({'product_id':product.id,'product_uom_qty':1,'price_unit':105})]})
     location=env.ref('sph_core.fixture_wh_central').lot_stock_id
@@ -356,6 +356,10 @@ class TestPurchaseAuthority(TransactionCase):
 
     def test_incident_po_company_denied(self):
         other=self.env['res.company'].create({'name':'FIXTURE foreign incident company'})
+        foreign_center=self.env['sph.center'].create({'name':'FIXTURE foreign PO center',
+            'center_type':'independent','company_id':other.id,'partner_id':self.env['res.partner'].create({
+                'name':'FIXTURE foreign PO partner','company_id':other.id}).id})
+        self.env.user.sph_center_ids=[Command.set(foreign_center.ids)]
         po=self.env['purchase.order'].with_company(other).create({
             'partner_id':self.fx['supplier'].id,'company_id':other.id})
         with self.assertRaisesRegex(AccessError,'^Unavailable$'):

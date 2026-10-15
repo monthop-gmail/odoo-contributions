@@ -37,14 +37,17 @@ class PurchaseAuthority(models.Model):
         return super().create(values_list)
 
     @api.model
-    def sph_prepare(self, supplier_id, product_id, quantity=1):
+    def sph_prepare(self, supplier_id, product_id, quantity=1, *extra, **client_values):
+        if extra or client_values:
+            return self._sph_po_deny('po.prepare')
+        self._sph_po_scope(creating=True)
         user=self.env.user
         if not (user.has_group('sph_core.group_sph_bot') or user.has_group('sph_core.group_sph_purchasing_approver') or user.has_group('sph_core.group_sph_hub_operator')):
-            raise AccessError('Unavailable')
+            return self._sph_po_deny('po.prepare')
         supplier=self.env['res.partner'].sudo().browse(supplier_id).exists()
         product=self.env['product.product'].sudo().browse(product_id).exists()
         if not supplier or not supplier.sph_fixture or not supplier.supplier_rank or not product or not product.sph_fixture or quantity<=0:
-            raise AccessError('Unavailable')
+            return self._sph_po_deny('po.prepare')
         with preparing_draft():
             order=self.sudo().create({'partner_id':supplier.id,'order_line':[(0,0,{
                 'product_id':product.id,'product_qty':quantity,'price_unit':101})]})

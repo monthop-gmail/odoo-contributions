@@ -7,6 +7,7 @@ from odoo.addons.sph_core.tests.test_purchase_authority import prepare
 
 assert env.cr.dbname=='sph_poc'
 assert env.company.po_double_validation=='two_step' and env.company.po_double_validation_amount==0
+env.ref('sph_core.fixture_user_sph_purchasing_approver').sph_center_ids=[(6,0,env.ref('sph_core.fixture_user_sph_bot').sph_center_ids.ids)]
 fx=prepare(env)
 fx['operator']=env.ref('sph_core.fixture_user_sph_hub_operator')
 maker_id=env['purchase.order'].with_user(fx['approver']).sph_prepare(fx['supplier'].id,fx['product'].id)
@@ -89,7 +90,7 @@ with env.registry.cursor() as cursor:
     assert original.state=='draft' and not original.picking_ids
 
 # Scope and nonexistent IDs have identical public errors and durable ID-free audit.
-fx['operator'].sph_center_ids=[(6,0,env.ref('sph_core.fixture_center_shared_a').ids)]
+fx['operator'].sph_center_ids=[(6,0,env.ref('sph_core.fixture_center_shared_b').ids)]
 env.cr.commit()
 env.registry.clear_cache()
 env.registry.signal_changes()

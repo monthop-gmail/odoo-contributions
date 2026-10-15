@@ -96,7 +96,7 @@ class SphCenterFixtures(models.Model):
                 "name": "FIXTURE " + role, "login": "fixture_" + role,
                 "company_id": company.id, "company_ids": [Command.set([company.id])],
                 "group_ids": [Command.set([group.id, base_group.id])],
-                "sph_center_ids": [Command.set([member.id] if portal else [])],
+                "sph_center_ids": [Command.set([centers["independent_a"].id] if role in ("sph_bot","sph_purchasing_approver") else ([member.id] if portal else []))],
             })
             user.partner_id.write({"sph_fixture": True, "company_id": company.id,
                                    "sph_center_id": member.id if portal else False})
@@ -195,6 +195,7 @@ class SphCenterFixtures(models.Model):
         self.env['ir.model.data'].create({'module':'sph_core','name':'fixture_flow_b_bot',
             'model':'res.users','res_id':bot.id,'noupdate':True})
         approver=self.env.ref('sph_core.fixture_user_sph_purchasing_approver')
+        approver.sph_center_ids=[Command.set(center.ids)]
         if any(user.has_group('stock.group_stock_manager') for user in actor|bot|approver):
             raise ValidationError('FIXTURE Flow B must not grant stock-manager authority.')
         warehouse=self.env.ref('sph_core.fixture_wh_central')
