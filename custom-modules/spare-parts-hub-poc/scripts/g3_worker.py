@@ -31,24 +31,30 @@ def rpc(role,record,method,args=None,kwargs=None):
     finally: connection.close()
 
 
-def observed(record,role,action,outcome):
+def audit_count(record,role,action,outcome):
     with env.registry.cursor() as cursor:
         observer=api.Environment(cursor,SUPERUSER_ID,{})
         count=observer['sph.authority.audit'].search_count([('res_model','=',record._name),
             ('res_id','=',record.id),('actor_uid','=',fx[role].id),('action','=',action),('outcome','=',outcome)])
-        assert count>0
+        return count
+
+
+def observed(record,role,action,outcome,before=0):
+    assert audit_count(record,role,action,outcome)>before
     rows.append({'model':record._name,'action':action,'role':role,'outcome':outcome,'audit_seen':True})
 
 
 def deny(record,method,action,args=None,kwargs=None):
+    before=audit_count(record,'bot',action,'deny')
     response=rpc('bot',record,method,args,kwargs)
     assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
-    observed(record,'bot',action,'deny')
+    observed(record,'bot',action,'deny',before)
 
 
 def allow(record,method,action,args=None,kwargs=None):
+    before=audit_count(record,'approver',action,'allow')
     assert 'result' in rpc('approver',record,method,args,kwargs)
-    observed(record,'approver',action,'allow')
+    observed(record,'approver',action,'allow',before)
 
 
 # The native-style approval refusal is tested by committed state, not exception.
@@ -84,4 +90,3 @@ observed(fx['maker_po'],'approver','po.review','deny')
 print('SPH_G3_RESULT '+json.dumps({'matrix':rows,'deny_rows_observed':sum(r['outcome']=='deny' for r in rows),
     'allow_rows_observed':sum(r['outcome']=='allow' for r in rows),'po_state':'purchase',
     'maker_checker_distinct':True,'settings':{'validation':'two_step','amount':0}}),flush=True)
-

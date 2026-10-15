@@ -16,6 +16,15 @@ class PurchaseAuthority(models.Model):
         order=self.sudo()
         payload=[order.partner_id.id,order.currency_id.id,order.company_id.id,
             [(line.product_id.id,line.product_qty,line.price_unit) for line in order.order_line.sorted('id')]]
+        for name in ('date_order','payment_term_id','fiscal_position_id','incoterm_id','notes'):
+            if name in order._fields:
+                value=order[name]
+                payload.append((name,value.ids if hasattr(value,'ids') else str(value)))
+        for line in order.order_line.sorted('id'):
+            for name in ('taxes_id','tax_ids','discount','date_planned','product_uom','product_uom_id','name'):
+                if name in line._fields:
+                    value=line[name]
+                    payload.append((line.id,name,value.ids if hasattr(value,'ids') else str(value)))
         return hashlib.sha256(json.dumps(payload,sort_keys=True).encode()).hexdigest()
 
     @api.model_create_multi
