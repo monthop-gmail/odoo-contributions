@@ -91,6 +91,8 @@ with env.registry.cursor() as cursor:
 # Scope and nonexistent IDs have identical public errors and durable ID-free audit.
 fx['operator'].sph_center_ids=[(6,0,env.ref('sph_core.fixture_center_shared_a').ids)]
 env.cr.commit()
+env.registry.clear_cache()
+env.registry.signal_changes()
 for target in (fx['so'],env['sale.order'].browse(2147483647)):
     before=audit_count(env['sale.order'],'operator','sale.reserve.scope','deny')
     response=rpc('operator',target,'sph_reserve',['FIXTURE scope denial'])
