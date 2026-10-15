@@ -68,3 +68,11 @@ class TestSPHFixtures(TransactionCase):
         self.assertEqual(references, [self.fixture(key).id for key in (
             "part_01", "center_owned", "user_sph_bot")])
         self.test_seed_purchase_and_stock()
+
+    def test_native_actor_does_not_expand_picker(self):
+        native=self.fixture('user_native_actor')
+        picker=self.fixture('user_sph_warehouse_picker')
+        self.assertNotEqual(native,picker)
+        self.assertTrue(native.has_group('stock.group_stock_manager'))
+        self.assertFalse(native.has_group('sph_core.group_sph_reader'))
+        self.assertFalse(picker.has_group('stock.group_stock_manager'))

@@ -98,3 +98,13 @@ class SphCenterFixtures(models.Model):
             })
             user.partner_id.write({"sph_fixture": True, "company_id": company.id,
                                    "sph_center_id": member.id if portal else False})
+
+        # Dedicated native competitor; never widen any SPH role's groups.
+        native=ensure("fixture_user_native_actor", "res.users", {
+            "name":"FIXTURE Native Stock Actor", "login":"fixture_native_actor",
+            "company_id":company.id, "company_ids":[Command.set([company.id])],
+            "group_ids":[Command.set([self.env.ref("base.group_user").id,
+                self.env.ref("stock.group_stock_manager").id])],
+            "sph_center_ids":[Command.clear()],
+        })
+        native.partner_id.write({"sph_fixture":True,"company_id":company.id})

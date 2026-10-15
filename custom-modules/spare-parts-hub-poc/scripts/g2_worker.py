@@ -16,17 +16,16 @@ product = env.ref('sph_core.fixture_part_04').product_variant_id
 warehouse = env.ref('sph_core.fixture_wh_central')
 env.cr.execute('SHOW transaction_isolation')
 isolation=env.cr.fetchone()[0]
-roles = ('sph_hub_operator','sph_warehouse_picker')
+roles = ('sph_hub_operator','native_actor')
 sessions = []
 for role in roles:
     user = env.ref('sph_core.fixture_user_'+role)
-    if role == 'sph_warehouse_picker':
-        user.group_ids = [Command.link(env.ref('stock.group_stock_manager').id)]
     session = root.session_store.new()
     session.update({'db':'sph_poc','uid':user.id,'login':user.login,
         'context':dict(user.with_user(user).context_get()),
         'session_token':user._compute_session_token(session.sid)})
     root.session_store.save(session); sessions.append(session.sid)
+assert not env.ref('sph_core.fixture_user_sph_warehouse_picker').has_group('stock.group_stock_manager')
 env.cr.commit()
 
 

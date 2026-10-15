@@ -58,5 +58,7 @@
   "TestPurchaseAuthority.test_bot_quant_create_denied",
   "TestPurchaseAuthority.test_bot_update_available_quantity_denied",
   "TestAtomicReservation.test_expiry_cron_registered_active",
-  "TestPurchaseAuthority.test_approver_direct_state_transition_denied"
+  "TestPurchaseAuthority.test_approver_direct_state_transition_denied",
+  "TestSPHFixtures.test_native_actor_does_not_expand_picker",
+  "TestAtomicReservation.test_cross_center_reserve_denied"
 ]

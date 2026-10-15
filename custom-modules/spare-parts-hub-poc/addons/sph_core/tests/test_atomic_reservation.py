@@ -113,3 +113,19 @@ class TestAtomicReservation(TransactionCase):
         self.assertEqual(cron.model_id.model,'sph.reservation')
         self.assertEqual(cron.code,'model._cron_expire()')
         self.assertEqual((cron.interval_number,cron.interval_type),(1,'hours'))
+
+    def test_cross_center_reserve_denied(self):
+        # Shared commercial parent must not grant access across membership centers.
+        actor=self.env.ref('sph_core.fixture_user_sph_hub_operator')
+        for own_key,foreign_key in (('shared_a','shared_b'),('shared_b','shared_a')):
+            own=self.env.ref('sph_core.fixture_center_'+own_key)
+            foreign=self.env.ref('sph_core.fixture_center_'+foreign_key)
+            self.assertEqual(own.partner_id.commercial_partner_id,foreign.partner_id.commercial_partner_id)
+            actor.sph_center_ids=[Command.set(own.ids)]
+            order=self.order()
+            order.write({'sph_center_id':foreign.id,'partner_id':foreign.partner_id.id})
+            with self.assertRaises(AccessError):
+                order.with_user(actor).sph_reserve('FIXTURE foreign center')
+            self.assertFalse(order.sph_reservation_ids)
+            self.assertFalse(any(order.picking_ids.move_ids.mapped('quantity')))
+            self.assertEqual(order.state,'sale')
