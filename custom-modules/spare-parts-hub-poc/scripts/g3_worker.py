@@ -112,6 +112,17 @@ for key,methods in (('so',('action_lock','action_unlock')),('po',('button_lock',
     with env.registry.cursor() as cursor:
         assert not api.Environment(cursor,SUPERUSER_ID,{})[fx[key]._name].browse(fx[key].id).locked
 
+# I7: real failed HTTP writes roll back, but the separate-cursor bundle audit survives.
+for key in ('so','po'):
+    record=fx[key];action=record._name+'.locked.bundle'
+    before=audit_count(record,'approver',action,'deny')
+    response=rpc('approver',record,'write',[{'locked':True,'partner_id':env.ref('sph_core.fixture_supplier_2').id}])
+    assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+    observed(record,'approver',action,'deny',before)
+    with env.registry.cursor() as cursor:
+        checked=api.Environment(cursor,SUPERUSER_ID,{})[record._name].browse(record.id)
+        assert not checked.locked and checked.partner_id.id==record.partner_id.id
+
 response=rpc('bot',fx['so'],'sph_reserve',['FIXTURE bot role denied'])
 assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
 assert response['error']['data']['name']=='odoo.exceptions.UserError'

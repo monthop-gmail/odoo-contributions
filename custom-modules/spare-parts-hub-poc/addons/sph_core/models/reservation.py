@@ -108,6 +108,8 @@ class Order(models.Model):
             quants = lock_stock(self.env, product, warehouse.lot_stock_id)
             free = sum(q.quantity-q.reserved_quantity for q in quants)
             if demand <= 0 or free <= 0 or (not allow_partial and demand > free):
+                from .authority import audit
+                audit(self,'sale.reserve.stockout','deny')
                 raise UserError('Unavailable')
         pickings = order.picking_ids.filtered(lambda p:p.state not in ('done','cancel'))
         pickings.sph_center_id = order.sph_center_id

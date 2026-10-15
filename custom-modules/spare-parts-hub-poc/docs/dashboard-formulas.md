@@ -30,3 +30,17 @@ unfilled confirmed orders. Native backorders should be absent until a real parti
 delivery creates one; the report counts actual records rather than assigning zero.
 Any changed observations produce changed values or validation failure. No SLA,
 threshold, pilot readiness score or real customer policy is inferred.
+
+
+B6e I6: stockout IDs now come from a fresh cursor reading durable
+`sph.authority.audit` rows with action `sale.reserve.stockout` / outcome `deny`,
+scoped to the scenario SO IDs. Audit row IDs/action/outcome are included in each
+measurement. Workers independently compare them to the actual HTTP shortage
+response (exact UserError class + Unavailable), retaining all prior assertions.
+The stockout path reuses the existing separate-cursor audit primitive; no commit
+was added to reservation or any business method.
+
+I7: separate-cursor `.locked.bundle` evidence is now feasible and asserted by
+failed real HTTP SO and PO writes in G3. A fresh observer sees the durable deny
+row and unchanged fields after rollback. Bound tests remain same-cursor,
+rollback-only; they are not labelled durable.

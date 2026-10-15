@@ -60,6 +60,7 @@ try:
     losers=[i for i,response in enumerate(responses) if 'error' in response]
     assert len(winners)==len(losers)==1
     assert responses[losers[0]]['error']['data']['message']=='Unavailable'
+    assert responses[losers[0]]['error']['data']['name']=='odoo.exceptions.UserError'
     with env.registry.cursor() as cursor:
         observer=api.Environment(cursor,SUPERUSER_ID,{})
         ledger=observer['sph.reservation'].search([('order_id','in',orders)])
@@ -79,6 +80,11 @@ try:
             'winners':1,'losers':1,'loser_message':'Unavailable','initial_free':1,
             'reserved_total':1,'double_allocations':0,'negative_stock':False,'observed_lock_waiters':waiters,
             'sales_confirmation':'authorized synthetic setup before reservation'}
+        stockout_audits=observer['sph.authority.audit'].search([
+            ('res_model','=','sale.order'),('res_id','in',orders),
+            ('action','=','sale.reserve.stockout'),('outcome','=','deny')])
+        stockout_ids=sorted(set(stockout_audits.mapped('res_id')))
+        assert stockout_ids==sorted([orders[losers[0]]])
         measured_orders=observer['sale.order'].browse(orders)
         result['measurements']={'existing_sales_before':existing_sales_before,
             'orders':[{'so_id':so.id,'state':so.state,
@@ -86,7 +92,8 @@ try:
                 'reserved_qty':sum(so.picking_ids.move_ids.filtered(lambda move:move.state not in ('done','cancel')).mapped('quantity'))}
                 for so in measured_orders],
             'backorder_picking_ids':measured_orders.picking_ids.filtered(lambda picking:bool(picking.backorder_id)).ids,
-            'stockout_so_ids':[orders[losers[0]]]}
+            'stockout_so_ids':stockout_ids,
+            'stockout_audits':[{'audit_id':row.id,'so_id':row.res_id,'action':row.action,'outcome':row.outcome} for row in stockout_audits]}
 finally:
     scenario_failed=sys.exc_info()[0] is not None
     cleanup_failed=False

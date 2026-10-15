@@ -73,6 +73,11 @@ try:
             'state_after_bot_denial':'draft','final_po_state':po.state,'receipt_ids':po.picking_ids.ids,
             'maker_uid':po.sph_maker_uid,'checker_uid':po.sph_reviewer_uid,'maker_checker_distinct':True,
             'human_confirm_allow_audit':True}
+        stockout_audits=observer['sph.authority.audit'].search([
+            ('res_model','=','sale.order'),('res_id','in',[order.id]),
+            ('action','=','sale.reserve.stockout'),('outcome','=','deny')])
+        stockout_ids=sorted(set(stockout_audits.mapped('res_id')))
+        assert stockout_ids==sorted([order.id])
         measured_orders=observer['sale.order'].browse([order.id])
         result['measurements']={'existing_sales_before':existing_sales_before,
             'orders':[{'so_id':so.id,'state':so.state,
@@ -80,7 +85,8 @@ try:
                 'reserved_qty':sum(so.picking_ids.move_ids.filtered(lambda move:move.state not in ('done','cancel')).mapped('quantity'))}
                 for so in measured_orders],
             'backorder_picking_ids':measured_orders.picking_ids.filtered(lambda picking:bool(picking.backorder_id)).ids,
-            'stockout_so_ids':[order.id]}
+            'stockout_so_ids':stockout_ids,
+            'stockout_audits':[{'audit_id':row.id,'so_id':row.res_id,'action':row.action,'outcome':row.outcome} for row in stockout_audits]}
 finally:
     scenario_failed=sys.exc_info()[0] is not None
     cleanup_failed=False
