@@ -282,3 +282,20 @@ state without asserting independently committed deny rows. The live G3 matrix al
 calls `do_scrap` and quant creation over HTTP, checking durable deny audits from a
 fresh cursor after request rollback. Denied creation uses plain `res_id=0` because
 no resource was created. All data and actions are synthetic harness fixtures.
+
+### B5c expiry schedule and native competitor evidence
+
+An active `ir.cron` calls `sph.reservation._cron_expire()` hourly (SYNTHETIC
+ASSUMPTION sweep cadence; the fixture TTL remains 48 hours). CI leaves scheduler
+threads disabled and explicitly invokes the installed cron through
+`method_direct_trigger()` in the committed live harness. Fresh observers must see
+an expired ledger, zero reserved native move quantity and zero reserved quant
+quantity. This proves the installed scheduled action works; it does not measure
+wall-clock scheduler timing.
+
+The final two G2 rounds put SPH first and native assignment first respectively in
+the advisory-lock queue, observing the first waiter before submitting the second.
+Both HTTP requests wait behind the external gate before release. The suite requires
+both actual winner outcomes, zero double allocation, and `Unavailable` for the SPH
+loser. `G2-request-results.json` and the manifest record launch order, winner actor,
+lock witnesses and cron-release evidence. B5d remains separate.

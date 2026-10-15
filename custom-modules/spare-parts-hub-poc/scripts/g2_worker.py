@@ -63,7 +63,7 @@ for number in range(rounds):
                 'product_uom_qty':1,'price_unit':104})]})
         order.action_confirm()  # Synthetic setup uses existing superuser authority.
         orders.append(order.id)
-    native = number == rounds-1
+    native = number >= rounds-2
     native_picking = None
     if native:
         native_picking=env['stock.picking'].create({'picking_type_id':warehouse.out_type_id.id,
@@ -77,9 +77,24 @@ for number in range(rounds):
     with env.registry.cursor() as gate:
         gate.execute('SELECT pg_advisory_xact_lock(%s,%s)',[LOCK_NAMESPACE,product.id])
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-            launch=(0,1) if number%2==0 else (1,0)
-            futures={index:pool.submit(request,index,native_picking.id if native and index==1 else orders[index],
-                f'FIXTURE-race-{number}-{index}',native and index==1) for index in launch}
+            # Two native rounds explicitly put each competitor first in the
+            # advisory-lock queue. Both requests remain concurrent behind gate.
+            launch=((0,1) if number==rounds-2 else (1,0)) if native else ((0,1) if number%2==0 else (1,0))
+            futures={}
+            for position,index in enumerate(launch):
+                futures[index]=pool.submit(request,index,native_picking.id if native and index==1 else orders[index],
+                    f'FIXTURE-race-{number}-{index}',native and index==1)
+                if native and position==0:
+                    deadline=time.monotonic()+12
+                    first_waiters=0
+                    while time.monotonic()<deadline:
+                        gate.execute("SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND classid=%s AND objid=%s AND NOT granted",[LOCK_NAMESPACE,product.id])
+                        first_waiters=gate.fetchone()[0]
+                        if first_waiters>=1: break
+                        time.sleep(0.02)
+                    if not first_waiters:
+                        gate.commit()
+                        raise AssertionError('UNRUNNABLE: first native competitor did not queue')
             deadline=time.monotonic()+12
             waiters=0
             while time.monotonic()<deadline:
@@ -108,6 +123,7 @@ for number in range(rounds):
             assert len(ledger)+assigned == 1
             winners=[0] if ledger else [1]
             losers=[1-winners[0]]
+            assert winners[0]==launch[0], 'Native queue order did not exercise intended winner'
             if not ledger:
                 assert responses[0].get('error',{}).get('data',{}).get('message')=='Unavailable'
         else:
@@ -125,7 +141,7 @@ for number in range(rounds):
     if native:
         # Release the native allocation before the next independent evidence stage.
         env.invalidate_all();native_picking.move_ids._do_unreserve();env.cr.commit()
-    results.append({'round':number,'mode':'sph_vs_native_assign' if native else 'two_http_reservations','launch_order':list(launch),'winners':1,'losers':1,
+    results.append({'round':number,'mode':'sph_vs_native_assign' if native else 'two_http_reservations','launch_order':list(launch),'winner_actor':('native' if winners[0]==1 else 'sph') if native else 'sph','winners':1,'losers':1,
         'double_allocations':0,'reserved_total':1,'negative_stock':False,'observed_lock_waiters':waiters,
         'loser_message':'native no allocation' if native and winners[0]==0 else 'Unavailable',
         'replay_duplicate':False})
@@ -165,6 +181,7 @@ with env.registry.cursor() as observer:
     assert sum(quants.mapped('reserved_quantity'))==0
 expiry_evidence={'cron_active':True,'entrypoint':'ir.cron.method_direct_trigger',
     'expired_state':'expired','native_move_quantity':0,'native_quant_reserved':0}
+assert {row['winner_actor'] for row in results if row['mode']=='sph_vs_native_assign'}=={'sph','native'}
 assert any(row['observed_lock_waiters']>=2 for row in results), 'UNRUNNABLE: no witnessed contention'
 print('SPH_G2_RESULT '+json.dumps({'round_count':rounds,'double_allocations':0,
     'expiry':expiry_evidence,'isolation':isolation,'lock_wait_rounds':sum(row['observed_lock_waiters']>=2 for row in results),'rounds':results}),flush=True)
