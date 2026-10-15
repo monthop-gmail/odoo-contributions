@@ -157,3 +157,36 @@ class SphCenterFixtures(models.Model):
             'warehouse_id':warehouse.id,'initial_free':1,
             'bot_uid':self.env.ref('sph_core.fixture_user_sph_bot').id,
             'approver_uid':self.env.ref('sph_core.fixture_user_sph_purchasing_approver').id}
+
+    @api.model
+    def _seed_flow_b(self, profile=None):
+        if (profile != 'disposable-test-harness' or self.env.cr.dbname != 'sph_poc'
+                or self.env['res.company'].search_count([]) != 1):
+            raise ValidationError('FIXTURE Flow B requires disposable-test-harness / sph_poc / single company.')
+        if self.env.ref('sph_core.fixture_flow_b_product',raise_if_not_found=False):
+            raise ValidationError('FIXTURE Flow B requires a clean scenario.')
+        product=self.env['product.product'].create({'name':'FIXTURE FLOW B SHORTAGE',
+            'default_code':'FIXTURE-FLOW-B-ZERO','type':'consu','is_storable':True,
+            'tracking':'none','sph_fixture':True,'list_price':101})
+        self.env['ir.model.data'].create({'module':'sph_core','name':'fixture_flow_b_product',
+            'model':'product.product','res_id':product.id,'noupdate':True})
+        partner=self.env['res.partner'].create({'name':'FIXTURE FLOW B CENTER',
+            'is_company':True,'sph_fixture':True,'company_id':self.env.company.id})
+        center=self.create({'name':'FIXTURE FLOW B CENTER','partner_id':partner.id,
+            'center_type':'independent','company_id':self.env.company.id,'sph_fixture':True})
+        partner.sph_center_id=center
+        actor=self.env['res.users'].with_context(no_reset_password=True).create({
+            'name':'FIXTURE FLOW B RESERVIST','login':'fixture_flow_b_reservist',
+            'company_id':self.env.company.id,'company_ids':[Command.set(self.env.company.ids)],
+            'group_ids':[Command.set(self.env.ref('sph_core.group_sph_hub_operator').ids)],
+            'sph_center_ids':[Command.set(center.ids)]})
+        actor.partner_id.write({'sph_fixture':True,'sph_center_id':center.id,'company_id':self.env.company.id})
+        bot=self.env.ref('sph_core.fixture_user_sph_bot')
+        approver=self.env.ref('sph_core.fixture_user_sph_purchasing_approver')
+        if any(user.has_group('stock.group_stock_manager') for user in actor|bot|approver):
+            raise ValidationError('FIXTURE Flow B must not grant stock-manager authority.')
+        warehouse=self.env.ref('sph_core.fixture_wh_central')
+        return {'center_id':center.id,'reservist_uid':actor.id,'product_id':product.id,
+            'location_id':warehouse.lot_stock_id.id,'warehouse_id':warehouse.id,
+            'bot_uid':bot.id,'approver_uid':approver.id,
+            'supplier_id':self.env.ref('sph_core.fixture_supplier_1').id}

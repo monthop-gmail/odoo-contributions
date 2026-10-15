@@ -103,3 +103,14 @@ class TestSPHFixtures(TransactionCase):
         with self.assertRaisesRegex(ValidationError,'single-company'):
             self.env['sph.center']._seed_flow_a(profile='disposable-test-harness')
         self.assertFalse(self.env.ref('sph_core.fixture_flow_a_product',raise_if_not_found=False))
+
+    def test_flow_b_seed_shortage_and_authority(self):
+        for profile in (None,'demo','pilot'):
+            with self.assertRaisesRegex(ValidationError,'disposable-test-harness'):
+                self.env['sph.center']._seed_flow_b(profile=profile)
+        data=self.env['sph.center']._seed_flow_b(profile='disposable-test-harness')
+        quants=self.env['stock.quant'].search([('product_id','=',data['product_id']),('location_id','=',data['location_id'])])
+        self.assertEqual(sum(q.quantity-q.reserved_quantity for q in quants),0)
+        self.assertNotEqual(data['bot_uid'],data['approver_uid'])
+        for uid in (data['reservist_uid'],data['bot_uid'],data['approver_uid']):
+            self.assertFalse(self.env['res.users'].browse(uid).has_group('stock.group_stock_manager'))

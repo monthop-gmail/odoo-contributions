@@ -79,5 +79,6 @@
   "TestPurchaseAuthority.test_approver_so_locked_bundle_denied",
   "TestPurchaseAuthority.test_approver_po_locked_bundle_denied",
   "TestSPHFixtures.test_flow_a_seed_last_unit_and_roles",
-  "TestSPHFixtures.test_flow_a_seed_rejects_multiple_companies"
+  "TestSPHFixtures.test_flow_a_seed_rejects_multiple_companies",
+  "TestSPHFixtures.test_flow_b_seed_shortage_and_authority"
 ]
