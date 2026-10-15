@@ -7,12 +7,15 @@ from odoo.tests.common import TransactionCase
 
 
 class TestAtomicReservation(TransactionCase):
-    def order(self, quantity=1, part='04'):
+    def order(self, quantity=1, part='04', confirm=True):
         product = self.env.ref('sph_core.fixture_part_'+part).product_variant_id
         center = self.env.ref('sph_core.fixture_center_independent_a')
-        return self.env['sale.order'].create({'partner_id':center.partner_id.id,
+        order = self.env['sale.order'].create({'partner_id':center.partner_id.id,
             'sph_center_id':center.id,'warehouse_id':self.env.ref('sph_core.fixture_wh_central').id,
             'order_line':[Command.create({'product_id':product.id,'product_uom_qty':quantity,'price_unit':101})]})
+        if confirm:
+            order.action_confirm()  # Authorized harness superuser setup, not reservation.
+        return order
 
     def reserve(self, order, key='FIXTURE request', **kwargs):
         return order.with_user(self.env.ref('sph_core.fixture_user_sph_hub_operator')).sph_reserve(key, **kwargs)
@@ -39,9 +42,10 @@ class TestAtomicReservation(TransactionCase):
             self.reserve(order)
             raise Injected()
         order.invalidate_recordset()
-        self.assertEqual(order.state,'draft')
+        self.assertEqual(order.state,'sale')
         self.assertFalse(order.sph_reservation_ids)
-        self.assertFalse(order.picking_ids)
+        self.assertTrue(order.picking_ids)
+        self.assertFalse(any(order.picking_ids.move_ids.mapped('quantity')))
 
     def test_request_replay(self):
         order = self.order(); first = self.reserve(order)
@@ -51,7 +55,7 @@ class TestAtomicReservation(TransactionCase):
     def test_reserve_beyond_free_denied(self):
         order = self.order(2)
         with self.assertRaises(UserError): self.reserve(order)
-        self.assertEqual(order.state,'draft')
+        self.assertEqual(order.state,'sale')
         self.assertFalse(order.sph_reservation_ids)
 
     def test_delivery_over_reserved_denied(self):
@@ -92,3 +96,13 @@ class TestAtomicReservation(TransactionCase):
         location = self.env.ref('sph_core.fixture_wh_central').lot_stock_id
         with self.assertRaises(UserError):
             self.env['stock.quant']._update_available_quantity(product,location,-2)
+
+    def test_readonly_reserve_cannot_confirm(self):
+        order=self.order(confirm=False)
+        for role in ('sph_hub_operator','sph_warehouse_picker'):
+            scoped=order.with_user(self.env.ref('sph_core.fixture_user_'+role))
+            with self.assertRaises(AccessError): scoped.check_access('write')
+            with self.assertRaises(UserError): scoped.sph_reserve('FIXTURE no confirmation')
+        self.assertEqual(order.state,'draft')
+        self.assertFalse(order.picking_ids)
+        self.assertFalse(order.sph_reservation_ids)

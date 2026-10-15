@@ -61,6 +61,7 @@ for number in range(rounds):
         order=env['sale.order'].create({'partner_id':center.partner_id.id,'sph_center_id':center.id,
             'warehouse_id':warehouse.id,'order_line':[Command.create({'product_id':product.id,
                 'product_uom_qty':1,'price_unit':104})]})
+        order.action_confirm()  # Synthetic setup uses existing superuser authority.
         orders.append(order.id)
     native = number == rounds-1
     native_picking = None
@@ -114,7 +115,9 @@ for number in range(rounds):
         if ledger:
             assert ledger.move_id.quantity==1
         loser=observed['sale.order'].browse(orders[losers[0]])
-        assert loser.state=='draft' and not loser.picking_ids
+        assert loser.state=='sale' and loser.picking_ids
+        assert not any(loser.picking_ids.move_ids.mapped('quantity'))
+        assert not observed['sph.reservation'].search_count([('order_id','=',loser.id)])
         before=ledger.ids
     if winners[0]==0 or not native:
         replay=request(winners[0],orders[winners[0]],f'FIXTURE-race-{number}-{winners[0]}')

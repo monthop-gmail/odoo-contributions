@@ -68,6 +68,12 @@ class Order(models.Model):
             raise UserError('Unavailable')
         self.env.cr.execute('SELECT id FROM sale_order WHERE id=%s FOR UPDATE', [self.id])
         order = self.sudo()
+        warehouse = self.env.ref('sph_core.fixture_wh_central').sudo()
+        # Reservation authority is not Sales confirmation/warehouse-edit authority.
+        if order.state != 'sale' or order.warehouse_id != warehouse:
+            from .authority import audit
+            audit(self,'sale.reserve.confirm','deny')
+            raise UserError('Unavailable')
         previous = self.env['sph.reservation'].sudo().search([
             ('order_id','=',self.id),('request_key','=',request_key)])
         if previous:
@@ -79,7 +85,7 @@ class Order(models.Model):
             raise UserError('Unavailable')
         warehouse = self.env.ref('sph_core.fixture_wh_central').sudo()
         lines = order.order_line.filtered(lambda line:not line.display_type)
-        if not lines or order.state not in ('draft','sent','sale'):
+        if not lines:
             raise UserError('Unavailable')
         for product in lines.product_id.sorted('id'):
             if not product.sph_fixture or product.tracking != 'none':
@@ -94,9 +100,6 @@ class Order(models.Model):
             free = sum(q.quantity-q.reserved_quantity for q in quants)
             if demand <= 0 or free <= 0 or (not allow_partial and demand > free):
                 raise UserError('Unavailable')
-        order.warehouse_id = warehouse
-        if order.state != 'sale':
-            order.action_confirm()
         pickings = order.picking_ids.filtered(lambda p:p.state not in ('done','cancel'))
         pickings.sph_center_id = order.sph_center_id
         moves = pickings.move_ids.filtered(lambda m:m.state not in ('done','cancel'))

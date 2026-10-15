@@ -8,10 +8,11 @@ from odoo.addons.sph_core.tests.test_purchase_authority import prepare
 assert env.cr.dbname=='sph_poc'
 assert env.company.po_double_validation=='two_step' and env.company.po_double_validation_amount==0
 fx=prepare(env)
+fx['operator']=env.ref('sph_core.fixture_user_sph_hub_operator')
 maker_id=env['purchase.order'].with_user(fx['approver']).sph_prepare(fx['supplier'].id,fx['product'].id)
 fx['maker_po']=env['purchase.order'].browse(maker_id)
 sessions={}
-for role in ('bot','approver'):
+for role in ('bot','approver','operator'):
     user=fx[role];session=root.session_store.new()
     session.update({'db':'sph_poc','uid':user.id,'login':user.login,
         'context':dict(user.with_user(user).context_get()),'session_token':user._compute_session_token(session.sid)})
@@ -60,6 +61,15 @@ def allow(record,method,action,args=None,kwargs=None):
     assert 'error' not in response and response.get('jsonrpc')=='2.0'
     observed(record,'approver',action,'allow',before)
 
+
+# F3: a read-only reservation role cannot convert a draft SO to a commitment.
+draft=fx['so_line'].order_id
+response=rpc('operator',draft,'sph_reserve',['FIXTURE must-not-confirm'])
+assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+observed(draft,'operator','sale.reserve.confirm','deny')
+with env.registry.cursor() as cursor:
+    original=api.Environment(cursor,SUPERUSER_ID,{})['sale.order'].browse(draft.id)
+    assert original.state=='draft' and not original.picking_ids
 
 # The native-style approval refusal is tested by committed state, not exception.
 assert 'result' in rpc('bot',fx['po'],'button_approve',[],{'force':True})
