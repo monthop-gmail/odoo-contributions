@@ -359,6 +359,7 @@ class TestPurchaseAuthority(TransactionCase):
         foreign_center=self.env['sph.center'].create({'name':'FIXTURE foreign PO center',
             'center_type':'independent','company_id':other.id,'partner_id':self.env['res.partner'].create({
                 'name':'FIXTURE foreign PO partner','company_id':other.id}).id})
+        self.env.user.company_ids=[Command.link(other.id)]
         self.env.user.sph_center_ids=[Command.set(foreign_center.ids)]
         po=self.env['purchase.order'].with_company(other).create({
             'partner_id':self.fx['supplier'].id,'company_id':other.id})

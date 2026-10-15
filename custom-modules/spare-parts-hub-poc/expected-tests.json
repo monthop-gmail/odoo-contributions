@@ -93,5 +93,14 @@
   "TestPurchaseAuthority.test_incident_po_create_denied",
   "TestPurchaseAuthority.test_incident_scope_and_clear",
   "TestPurchaseAuthority.test_incident_rejects_urls_and_free_text",
-  "TestPurchaseAuthority.test_incident_po_company_denied"
+  "TestPurchaseAuthority.test_incident_po_company_denied",
+  "TestPOCenterScope.test_creator_center_server_assigned",
+  "TestPOCenterScope.test_same_center_read_search_export",
+  "TestPOCenterScope.test_cross_center_same_commercial_partner",
+  "TestPOCenterScope.test_no_membership_denies_all_b7a_paths",
+  "TestPOCenterScope.test_ambiguous_creator_denied",
+  "TestPOCenterScope.test_client_center_kwargs_and_context_denied",
+  "TestPOCenterScope.test_explicit_hub_grant_and_revoke",
+  "TestPOCenterScope.test_no_seeded_hub_grants_or_acl_implication",
+  "TestPOCenterScope.test_owner_immutable"
 ]

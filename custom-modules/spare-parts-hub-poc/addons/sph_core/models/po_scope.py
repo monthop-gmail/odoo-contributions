@@ -46,7 +46,8 @@ class PurchaseScope(models.Model):
             if 'sph_center_id' in values:return self._sph_po_deny('po.owner')
             center=self._sph_po_scope(creating=True,company_id=values.get('company_id'))
             prepared.append(dict(values,sph_center_id=center.id))
-        return super().create(prepared)
+        try:return super().create(prepared)
+        except (AccessError,MissingError):return self._sph_po_deny('po.create')
 
     def write(self,values):
         if 'sph_center_id' in values:return self._sph_po_deny('po.owner')
