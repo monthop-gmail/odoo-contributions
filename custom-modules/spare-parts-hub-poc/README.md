@@ -227,3 +227,24 @@ The live suite runs G1, G2, then G3; G3 emits sanitized
 `G3-authority-results.json` and `G3-assertions.xml`. No session/share tokens enter
 these outputs. A green exact-commit live stage is required for G3 evidence.
 This does not finish Flow A+B integration or reviewer/owner G4 sign-off.
+
+### G3 / review #53 F3: reservation is not Sales approval
+
+`sph_reserve` now requires an already confirmed (`sale`) order in the fixture
+central warehouse. It never calls `action_confirm` and never changes the order's
+warehouse. Read-only SPH operators/pickers retain only bounded stock-reservation
+authority after their role and order read scope are checked. Normal Sales
+confirmation must happen through a separately authorized Odoo Sales path; no
+native Sales ACL/group grant was added. Synthetic model/race setup confirms
+orders as the existing harness superuser before the reservation requests.
+
+`test_readonly_reserve_cannot_confirm` proves both read-only reservation roles
+lack order-write access and cannot confirm a draft through this method. The live
+G3 suite repeats the operator attempt over HTTP, checks a durable deny-audit row,
+and observes the committed SO remains draft with no picking. Race loser rollback
+now means the previously confirmed order/picking remains unallocated, rather than
+claiming the order confirmation itself was part of reservation.
+
+Pre-G4 review #53/#55 F1/F2/P3 scheduling, native-actor/coverage, retry evidence,
+location coverage and labeling items remain separate follow-up work. This F3
+change does not claim those findings are closed or approve G4.
