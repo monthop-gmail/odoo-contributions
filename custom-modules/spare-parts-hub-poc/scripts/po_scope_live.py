@@ -1,8 +1,9 @@
 """B7b committed capability matrix, called inside the out-of-process G3 worker."""
+import http.client
 from odoo import api, SUPERUSER_ID
 
 
-def execute(env,fx,rpc,audit_count,observed,rows):
+def execute(env,fx,rpc,audit_count,observed,rows,sessions):
     centers=[env.ref('sph_core.fixture_center_shared_'+key) for key in ('a','b')]
     original={role:fx[role].sph_center_ids.ids for role in ('bot','approver')}
     orders=[]
@@ -40,7 +41,28 @@ def execute(env,fx,rpc,audit_count,observed,rows):
         response=rpc('approver',own,'sph_review')
         assert 'error' not in response
         observed(own,'approver','po.review','allow');rows[-1]['path']='b7b_same_center_'+str(index)
+        response=rpc('approver',own,'action_rfq_send');assert 'error' not in response
+        # Returning a checked RFQ wizard action sends no mail in this harness.
         denied(foreign,'cross_'+str(index))
+        token=foreign._portal_ensure_token()
+        attachment=env['ir.attachment'].create({'name':'FIXTURE PO binary',
+            'raw':b'FIXTURE restricted content','res_model':'purchase.order','res_id':foreign.id,
+            'access_token':'fixture-po-binary-'+str(index)})
+        sync()
+        for path,action in (('/my/purchase/'+str(foreign.id)+'?access_token='+token,'po.portal'),
+                ('/my/purchase/2147483647?access_token='+token,'po.portal'),
+                ('/web/content/'+str(attachment.id)+'?access_token=fixture-po-binary-'+str(index),'po.binary')):
+            before=audit_count(env['purchase.order'],'approver',action,'deny')
+            connection=http.client.HTTPConnection('127.0.0.1',8069,timeout=20)
+            try:
+                connection.request('GET',path,headers={'Cookie':'session_id='+sessions['approver']})
+                response=connection.getresponse();payload=response.read()
+                assert response.status in (303,403,404)
+                assert b'FIXTURE restricted content' not in payload
+            finally:connection.close()
+            observed(env['purchase.order'],'approver',action,'deny',before)
+            rows[-1]['path']='b7b_token_'+str(index)+'_'+action
+
     fx['approver'].sph_center_ids=[(5,0,0)];sync()
     denied(orders[0],'empty')
     denied(env['purchase.order'].browse(2147483647),'missing')

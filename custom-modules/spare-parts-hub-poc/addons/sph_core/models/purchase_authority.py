@@ -132,4 +132,4 @@ class PurchaseAuthority(models.Model):
 
     def action_rfq_send(self):
         approver(self,'po.send',maker=True)
-        return super().action_rfq_send()
+        return super(PurchaseAuthority,self.sudo()).action_rfq_send()
