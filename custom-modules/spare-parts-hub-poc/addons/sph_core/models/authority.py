@@ -17,7 +17,8 @@ def internal_stock():
 def audit(records, action, outcome):
     values = [{'res_model':records._name,'res_id':record.id,'actor_uid':records.env.uid,
                'action':action,'outcome':outcome} for record in records]
-    if not values: return
+    if not values:
+        values=[{'res_model':records._name,'res_id':0,'actor_uid':records.env.uid,'action':action,'outcome':outcome}]
     if outcome == 'deny':
         # Uncommitted unit fixtures/DDL are invisible to another cursor. Deny rows
         # are asserted only by the committed live suite, never TransactionCase.
