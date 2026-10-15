@@ -23,10 +23,14 @@ The field is not copied when an order is duplicated.
 ## Authority and audit
 
 Only an active human in the existing SPH purchasing-approver role may attach,
-replace or clear a reference on an existing order they can read. Bot membership
+replace or clear a reference on an existing in-scope order. Bot membership
 denies even when unioned with human/native groups; uid-1/sudo is not an exception
 to this role check. A write must contain only sph_incident_ref. Validation and
-record scope precede a narrowly elevated single-field write. Bundled writes are
+record scope precede a narrowly elevated single-field write.
+SO writes require native read access. The existing SPH approver intentionally has
+no native Purchase read ACL: PO writes use that existing bounded role capability,
+explicitly enforcing allowed companies and the actual actor's computed read-rule
+domain before elevation. This grants no native read ACL or general PO write. Bundled writes are
 rejected. Creation with a nonempty reference is rejected (attach after creation).
 No ACL, rule, group grant, business approval or stock authority is added.
 

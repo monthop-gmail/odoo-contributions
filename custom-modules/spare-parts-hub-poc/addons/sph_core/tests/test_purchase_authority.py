@@ -353,3 +353,12 @@ class TestPurchaseAuthority(TransactionCase):
             with self.assertRaisesRegex(UserError,'^Unavailable$'):
                 self.fx['po'].with_user(self.fx['approver']).write({'sph_incident_ref':value})
         self.assertFalse(self.fx['po'].sph_incident_ref)
+
+    def test_incident_po_company_denied(self):
+        other=self.env['res.company'].create({'name':'FIXTURE foreign incident company'})
+        po=self.env['purchase.order'].with_company(other).create({
+            'partner_id':self.fx['supplier'].id,'company_id':other.id})
+        with self.assertRaisesRegex(AccessError,'^Unavailable$'):
+            po.with_user(self.fx['approver']).with_context(allowed_company_ids=self.fx['approver'].company_ids.ids).write({
+                'sph_incident_ref':'fixture:incident:foreign-company'})
+        self.assertFalse(po.sph_incident_ref)

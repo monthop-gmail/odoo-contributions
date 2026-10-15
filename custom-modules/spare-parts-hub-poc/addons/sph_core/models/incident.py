@@ -13,8 +13,16 @@ def incident_write(records,values,parent):
     action='incident.reference'
     approver(records,action)
     try:
-        records.check_access('read')
-        if len(records.exists())!=len(records):raise MissingError('Unavailable')
+        if records._name=='purchase.order':
+            # SPH approvers intentionally lack a native Purchase read ACL. Match
+            # their bounded approval capability, retaining actual-user rule scope.
+            domain=list(records.env['ir.rule']._compute_domain(records._name,'read'))
+            allowed=records.sudo().search(domain+[('id','in',records.ids),
+                ('company_id','in',records.env.companies.ids)])
+            if len(allowed)!=len(records):raise AccessError('Unavailable')
+        else:
+            records.check_access('read')
+            if len(records.exists())!=len(records):raise MissingError('Unavailable')
     except (AccessError,MissingError):
         audit(records.browse(),action,'deny')
         raise AccessError('Unavailable') from None

@@ -92,5 +92,6 @@
   "TestPurchaseAuthority.test_incident_po_bundle_denied",
   "TestPurchaseAuthority.test_incident_po_create_denied",
   "TestPurchaseAuthority.test_incident_scope_and_clear",
-  "TestPurchaseAuthority.test_incident_rejects_urls_and_free_text"
+  "TestPurchaseAuthority.test_incident_rejects_urls_and_free_text",
+  "TestPurchaseAuthority.test_incident_po_company_denied"
 ]

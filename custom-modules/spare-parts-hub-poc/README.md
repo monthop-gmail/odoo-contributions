@@ -434,7 +434,7 @@ unit-test entrypoint, including dashboard stale/unclean-input controls.
 ### M2 SPH-side opaque incident references
 
 `sale.order.sph_incident_ref` and `purchase.order.sph_incident_ref` are optional
-opaque metadata. Existing human approvers may attach/replace/clear on readable
+opaque metadata. Existing human approvers may attach/replace/clear on in-scope
 orders using a single-field write; bot writes, bundles and nonempty create-time
 injection are denied. Existing record rules still govern reads. Reservations use
 the SO link via order_id, rather than copying an independent reference.
