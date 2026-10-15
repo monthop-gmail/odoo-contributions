@@ -19,12 +19,17 @@ def g2_race():
     execute()
 
 
+def g3_authority():
+    from g3_authority import execute
+    execute()
+
+
 def run_suite(junit_path=JUNIT):
-    suite=ET.Element('testsuite',name='SPH live G1/G2',tests='2',failures='0',errors='0',skipped='0')
+    suite=ET.Element('testsuite',name='SPH live G1/G2/G3',tests='3',failures='0',errors='0',skipped='0')
     properties=ET.SubElement(suite,'properties')
-    ET.SubElement(properties,'property',name='G3',value='NOT RUN')
+    ET.SubElement(properties,'property',name='scope',value='G1/G2/G3 real live evidence; G4 pending')
     failures=skips=0
-    for name,runner in (('g1_http',g1_http),('g2_race',g2_race)):
+    for name,runner in (('g1_http',g1_http),('g2_race',g2_race),('g3_authority',g3_authority)):
         case=ET.SubElement(suite,'testcase',name=name,classname='sph_live')
         started=time.monotonic()
         try:

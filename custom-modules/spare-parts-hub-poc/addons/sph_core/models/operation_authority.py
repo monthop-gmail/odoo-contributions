@@ -44,7 +44,7 @@ class QuantAuthority(models.Model):
     _inherit='stock.quant'
     @api.model
     def _update_available_quantity(self, product_id, location_id, quantity=False, reserved_quantity=False, **kwargs):
-        if self.env.user.has_group('sph_core.group_sph_bot'):
+        if self.env.uid != 1 and self.env.user.has_group('sph_core.group_sph_bot'):
             audit(self,'quant.native','deny');raise AccessError('Unavailable')
         with internal_stock():
             return super()._update_available_quantity(product_id,location_id,quantity=quantity,
@@ -59,7 +59,7 @@ class QuantAuthority(models.Model):
         return super().write(values)
     @api.model_create_multi
     def create(self, values_list):
-        if self.env.user.has_group('sph_core.group_sph_bot'):
+        if self.env.uid != 1 and self.env.user.has_group('sph_core.group_sph_bot'):
             audit(self,'quant.create','deny');raise AccessError('Unavailable')
         return super().create(values_list)
     def action_apply_inventory(self, date=None):
@@ -72,10 +72,10 @@ class QuantAuthority(models.Model):
 class BotPicking(models.Model):
     _inherit='stock.picking'
     def action_assign(self):
-        if self.env.user.has_group('sph_core.group_sph_bot'):
+        if self.env.uid != 1 and self.env.user.has_group('sph_core.group_sph_bot'):
             audit(self,'stock.assign','deny');raise AccessError('Unavailable')
         return super().action_assign()
     def button_validate(self):
-        if self.env.user.has_group('sph_core.group_sph_bot'):
+        if self.env.uid != 1 and self.env.user.has_group('sph_core.group_sph_bot'):
             audit(self,'stock.validate','deny');raise AccessError('Unavailable')
         return super().button_validate()

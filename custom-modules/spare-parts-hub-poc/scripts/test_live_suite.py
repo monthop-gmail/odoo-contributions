@@ -14,7 +14,7 @@ class TestLiveSuite(unittest.TestCase):
     def run_control(self,g1=None,g2=None):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'live.xml'
-            with patch('live_suite.g1_http',side_effect=g1),patch('live_suite.g2_race',side_effect=g2),contextlib.redirect_stdout(io.StringIO()):
+            with patch('live_suite.g1_http',side_effect=g1),patch('live_suite.g2_race',side_effect=g2),patch('live_suite.g3_authority'),contextlib.redirect_stdout(io.StringIO()):
                 code=run_suite(path)
             return code,ET.parse(path).getroot()
 
