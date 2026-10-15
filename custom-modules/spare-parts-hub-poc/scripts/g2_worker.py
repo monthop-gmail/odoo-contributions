@@ -11,7 +11,7 @@ from odoo.addons.sph_core.models.reservation import LOCK_NAMESPACE
 
 assert env.cr.dbname == 'sph_poc'
 rounds = int(globals().get('round_count', 4))
-assert 2 <= rounds <= 20
+assert 4 <= rounds <= 20
 product = env.ref('sph_core.fixture_part_04').product_variant_id
 warehouse = env.ref('sph_core.fixture_wh_central')
 env.cr.execute('SHOW transaction_isolation')
@@ -155,7 +155,7 @@ active.write({'expires_at':fields.Datetime.now()-timedelta(seconds=1)})
 env.cr.commit()
 cron=env.ref('sph_core.ir_cron_expire_reservations')
 assert cron.active
-cron.method_direct_trigger()
+assert cron.method_direct_trigger() is True
 env.invalidate_all()
 center=env.ref('sph_core.fixture_center_independent_a')
 expiry_order=env['sale.order'].create({'partner_id':center.partner_id.id,'sph_center_id':center.id,
@@ -171,7 +171,7 @@ assert expiry.expires_at>fields.Datetime.now()+timedelta(hours=47)
 expiry.write({'expires_at':fields.Datetime.now()-timedelta(seconds=1)})
 expiry_id=expiry.id
 env.cr.commit()
-cron.method_direct_trigger()
+assert cron.method_direct_trigger() is True
 with env.registry.cursor() as observer:
     observed=api.Environment(observer,SUPERUSER_ID,{})
     expired=observed['sph.reservation'].browse(expiry_id)
