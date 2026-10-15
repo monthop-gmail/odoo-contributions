@@ -158,3 +158,46 @@ class TestPurchaseAuthority(TransactionCase):
     def test_approver_so_pricelist_allowed(self):
         self.allow('so','write',{'pricelist_id':self.fx['pricelist'].id})
         self.assertEqual(self.fx['so'].pricelist_id,self.fx['pricelist'])
+
+    def test_bot_so_line_create_price_denied(self):
+        self.price_bot_scope()
+        before=self.env['sale.order.line'].search_count([])
+        with self.assertRaisesRegex(AccessError, 'Unavailable'):
+            self.env['sale.order.line'].with_user(self.fx['bot']).create({
+                'order_id':self.fx['so'].id,'product_id':self.fx['product'].id,
+                'product_uom_qty':1,'price_unit':99})
+        self.assertEqual(self.env['sale.order.line'].search_count([]),before)
+
+    def test_bot_po_line_create_outside_draft_denied(self):
+        before=self.env['purchase.order.line'].search_count([])
+        # RPC context flags cannot forge the private server-side draft capability.
+        with self.assertRaisesRegex(AccessError, 'Unavailable'):
+            self.env['purchase.order.line'].with_user(self.fx['bot']).with_context(
+                sph_preparing_draft=True).create({'order_id':self.fx['po'].id,
+                'product_id':self.fx['product'].id,'product_qty':1,'price_unit':99})
+        self.assertEqual(self.env['purchase.order.line'].search_count([]),before)
+
+    def test_bot_do_scrap_denied(self):
+        before=self.fx['quant'].quantity
+        self.deny('scrap','do_scrap')
+        self.assertEqual(self.fx['scrap'].state,'draft')
+        self.assertEqual(self.fx['quant'].quantity,before)
+
+    def test_bot_scrap_done_write_denied(self):
+        self.deny('scrap','write',{'state':'done'})
+        self.assertEqual(self.fx['scrap'].state,'draft')
+
+    def test_bot_quant_create_denied(self):
+        before=self.env['stock.quant'].search_count([])
+        with self.assertRaisesRegex(AccessError, 'Unavailable'):
+            self.env['stock.quant'].with_user(self.fx['bot']).create({
+                'product_id':self.fx['product'].id,
+                'location_id':self.fx['quant'].location_id.id,'quantity':1})
+        self.assertEqual(self.env['stock.quant'].search_count([]),before)
+
+    def test_bot_update_available_quantity_denied(self):
+        before=(self.fx['quant'].quantity,self.fx['quant'].reserved_quantity)
+        with self.assertRaisesRegex(AccessError, 'Unavailable'):
+            self.env['stock.quant'].with_user(self.fx['bot'])._update_available_quantity(
+                self.fx['product'],self.fx['quant'].location_id,quantity=1)
+        self.assertEqual((self.fx['quant'].quantity,self.fx['quant'].reserved_quantity),before)

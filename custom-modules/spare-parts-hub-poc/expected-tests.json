@@ -50,5 +50,11 @@
   "TestPurchaseAuthority.test_bot_po_discount_denied",
   "TestPurchaseAuthority.test_approver_po_discount_allowed",
   "TestPurchaseAuthority.test_bot_so_pricelist_denied",
-  "TestPurchaseAuthority.test_approver_so_pricelist_allowed"
+  "TestPurchaseAuthority.test_approver_so_pricelist_allowed",
+  "TestPurchaseAuthority.test_bot_so_line_create_price_denied",
+  "TestPurchaseAuthority.test_bot_po_line_create_outside_draft_denied",
+  "TestPurchaseAuthority.test_bot_do_scrap_denied",
+  "TestPurchaseAuthority.test_bot_scrap_done_write_denied",
+  "TestPurchaseAuthority.test_bot_quant_create_denied",
+  "TestPurchaseAuthority.test_bot_update_available_quantity_denied"
 ]
