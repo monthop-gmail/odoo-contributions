@@ -96,7 +96,11 @@ class TestPurchaseAuthority(TransactionCase):
     def test_maker_cannot_check(self):
         actor=self.fx['approver']
         po_id=self.env['purchase.order'].with_user(actor).sph_prepare(self.fx['supplier'].id,self.fx['product'].id)
-        with self.assertRaises(AccessError): self.env['purchase.order'].browse(po_id).with_user(actor).sph_review()
+        own=self.env['purchase.order'].browse(po_id).with_user(actor)
+        with self.assertRaises(AccessError): own.sph_review()
+        with self.assertRaises(AccessError): own.button_approve(force=True)
+        with self.assertRaises(AccessError): own.button_confirm()
+        self.assertEqual(own.sudo().state,'draft')
 
     def test_bot_so_price_denied(self): self.deny('so_line','write',{'price_unit':99})
     def test_approver_so_price_allowed(self): self.allow('so_line','write',{'price_unit':99})

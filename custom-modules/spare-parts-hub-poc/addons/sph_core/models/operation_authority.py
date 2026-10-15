@@ -52,6 +52,7 @@ class ScrapAuthority(models.Model):
     def do_scrap(self):
         approver(self,'scrap.validate')
         with internal_stock(): result=super(ScrapAuthority,self.sudo()).do_scrap()
+        audit(self,'scrap.validate','allow')
         return result
     def write(self, values):
         if values.get('state') == 'done': approver(self,'scrap.validate')

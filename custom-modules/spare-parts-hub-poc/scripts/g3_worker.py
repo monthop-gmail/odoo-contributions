@@ -104,6 +104,13 @@ with env.registry.cursor() as cursor:
 response=rpc('approver',fx['maker_po'],'sph_review')
 assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
 observed(fx['maker_po'],'approver','po.review','deny')
+for method in ('button_approve','button_confirm'):
+    before=audit_count(fx['maker_po'],'approver','po.approve','deny')
+    response=rpc('approver',fx['maker_po'],method,[],{'force':True} if method=='button_approve' else {})
+    assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+    observed(fx['maker_po'],'approver','po.approve','deny',before)
+with env.registry.cursor() as cursor:
+    assert api.Environment(cursor,SUPERUSER_ID,{})['purchase.order'].browse(fx['maker_po'].id).state=='draft'
 print('SPH_G3_RESULT '+json.dumps({'matrix':rows,'deny_rows_observed':sum(r['outcome']=='deny' for r in rows),
     'allow_rows_observed':sum(r['outcome']=='allow' for r in rows),'po_state':'purchase',
     'maker_checker_distinct':True,'settings':{'validation':'two_step','amount':0}}),flush=True)
