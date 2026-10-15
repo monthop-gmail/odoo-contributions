@@ -15,15 +15,29 @@ class PurchaseScope(models.Model):
         audit(self.browse(),action,'deny')
         raise AccessError('Unavailable') from None
 
+    def _sph_po_company(self,action):
+        """One active, actually assigned company per operation; never trust sudo context."""
+        actor=self.env.user.sudo()
+        assigned=set(actor.company_ids.ids)
+        selected=self.env.context.get('allowed_company_ids',[actor.company_id.id])
+        if (not isinstance(selected,(list,tuple)) or not selected or
+                any(type(value) is not int or value not in assigned for value in selected)):
+            return self._sph_po_deny(action)
+        active=selected[0]
+        if 'force_company' in self.env.context:
+            forced=self.env.context['force_company']
+            if type(forced) is not int or forced!=active:
+                return self._sph_po_deny(action)
+        return active
+
     def _sph_po_scope(self,creating=False,company_id=None,action='po.scope'):
-        """Central center/company hook; remaining capabilities are B7b/B7c."""
+        """Central center/company gate, including delegated/sudo entrypoints."""
         actor=self.env.user
         centers=actor.sudo().sph_center_ids
-        try:
-            companies=set(self.env.companies.ids)&set(actor.sudo().company_ids.ids)
-        except AccessError:
+        active=self._sph_po_company(action)
+        companies={active}
+        if company_id is not None and (type(company_id) is not int or company_id!=active):
             return self._sph_po_deny(action)
-        if not companies:return self._sph_po_deny(action)
         if creating:
             if CENTER_CONTEXT.intersection(self.env.context) or len(centers)!=1:
                 return self._sph_po_deny('po.owner')
@@ -51,6 +65,7 @@ class PurchaseScope(models.Model):
         except (AccessError,MissingError):return self._sph_po_deny('po.create')
 
     def write(self,values):
+        if 'company_id' in values:self._sph_po_scope(company_id=values['company_id'],action='po.company')
         if 'sph_center_id' in values:return self._sph_po_deny('po.owner')
         # Scope before outer bundle/role guards can inspect or audit any record.
         if 'locked' in values:self._sph_po_scope(action='purchase.order.locked')
@@ -78,6 +93,7 @@ class PurchaseScope(models.Model):
     def _search(self,domain,*args,**kwargs):
         if self.env.su:return super()._search(domain,*args,**kwargs)
         self._sph_po_scope()
+        domain=[('company_id','=',self._sph_po_company('po.search'))]+list(domain)
         try:return super()._search(domain,*args,**kwargs)
         except (AccessError,MissingError):return self._sph_po_deny('po.search')
 

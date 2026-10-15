@@ -116,5 +116,10 @@
   "TestPOCenterScope.test_link_projection_grant_revoke_cached_reads",
   "TestPOCenterScope.test_system_sudo_without_membership_denied",
   "TestPOCenterScope.test_approval_predicate_denies_by_exception",
-  "TestPOCenterScope.test_receipt_rule_explicit_membership"
+  "TestPOCenterScope.test_receipt_rule_explicit_membership",
+  "TestPOCenterScope.test_legitimate_company_context_review_confirm",
+  "TestPOCenterScope.test_forged_company_context_denied_even_under_sudo",
+  "TestPOCenterScope.test_active_company_not_union_and_mixed_batch_atomic",
+  "TestPOCenterScope.test_company_write_cannot_redirect_reviewed_order",
+  "TestPOCenterScope.test_malformed_company_context_fails_closed"
 ]

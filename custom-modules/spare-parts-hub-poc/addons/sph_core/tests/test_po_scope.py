@@ -297,3 +297,77 @@ class TestPOCenterScope(TransactionCase):
         self.assertEqual(self.env['stock.picking'].with_user(actor).search_count([('id','in',[r.id for r in receipts])]),2)
         actor.group_ids=[Command.unlink(self.env.ref('sph_core.group_sph_po_hub').id)]
         self.assertFalse(self.env['stock.picking'].with_user(actor).search([('id','in',[r.id for r in receipts])]))
+
+    def company_probe(self):
+        other=self.env['res.company'].create({'name':'FIXTURE company boundary B',
+            'po_double_validation':'two_step','po_double_validation_amount':0})
+        partner=self.env['res.partner'].create({'name':'FIXTURE company B center partner','company_id':other.id})
+        center=self.env['sph.center'].create({'name':'FIXTURE company B center','company_id':other.id,
+            'center_type':'independent','partner_id':partner.id})
+        maker=self.env['res.users'].with_context(no_reset_password=True).create({
+            'name':'FIXTURE company B maker','login':'fixture_company_b_maker','company_id':other.id,
+            'company_ids':[Command.set(other.ids)],'sph_center_ids':[Command.set(center.ids)],
+            'group_ids':[Command.set(self.env.ref('sph_core.group_sph_bot').ids)]})
+        po=self.env['purchase.order'].browse(self.env['purchase.order'].with_user(maker).with_context(
+            allowed_company_ids=other.ids).sph_prepare(self.supplier.id,self.product.id))
+        return other,center,po
+
+    def test_legitimate_company_context_review_confirm(self):
+        human=self.orders[0].with_user(self.users[0]).with_context(
+            allowed_company_ids=self.env.company.ids,force_company=self.env.company.id)
+        self.assertTrue(human.sph_review());human.button_confirm()
+        self.assertEqual(self.orders[0].state,'purchase')
+        self.assertTrue(self.orders[0].picking_ids)
+
+    def test_forged_company_context_denied_even_under_sudo(self):
+        other,center,foreign=self.company_probe()
+        po=self.orders[0];user=self.users[0]
+        po.with_user(user).sph_review()  # Every other confirm predicate is valid.
+        before=self.snapshot(po|foreign)
+        for context in ({'allowed_company_ids':other.ids},
+                {'allowed_company_ids':[self.env.company.id,other.id]},
+                {'allowed_company_ids':self.env.company.ids,'force_company':other.id},
+                {'force_company':other.id}):
+            for elevated in (False,True):
+                record=po.with_user(user).with_context(**context)
+                if elevated:record=record.sudo()
+                self.denied(lambda:record.sph_review())
+                self.denied(lambda:record.button_confirm())
+                self.denied(lambda:record.button_approve(force=True))
+                self.assertEqual(self.snapshot(po|foreign),before)
+
+    def test_active_company_not_union_and_mixed_batch_atomic(self):
+        other,center,foreign=self.company_probe();user=self.users[0];own=self.orders[0]
+        user.company_ids=[Command.link(other.id)]
+        user.sph_center_ids=[Command.link(center.id)]  # Prevent center mismatch masking company denial.
+        own.with_user(user).with_context(allowed_company_ids=self.env.company.ids).sph_review()
+        foreign.with_user(user).with_context(allowed_company_ids=other.ids).sph_review()
+        self.assertEqual(foreign.sph_reviewer_uid,user.id)
+        self.assertEqual(foreign.sph_review_digest,foreign._sph_digest_value())
+        before=self.snapshot(own|foreign)
+        for context in ({'allowed_company_ids':self.env.company.ids},
+                {'allowed_company_ids':[self.env.company.id,other.id]},
+                {'allowed_company_ids':self.env.company.ids,'force_company':other.id}):
+            for record in (foreign,own|foreign):
+                self.denied(lambda:record.with_user(user).with_context(**context).sph_review())
+                self.denied(lambda:record.with_user(user).with_context(**context).button_confirm())
+            self.assertEqual(self.snapshot(own|foreign),before)
+        user.group_ids=[Command.link(self.env.ref('sph_core.group_sph_po_hub').id)]
+        self.denied(lambda:foreign.with_user(user).with_context(allowed_company_ids=self.env.company.ids).button_confirm())
+        user.company_ids=[Command.set(self.env.company.ids)]
+        self.denied(lambda:foreign.with_user(user).with_context(allowed_company_ids=other.ids).sph_review())
+        self.assertEqual(self.snapshot(own|foreign),before)
+
+    def test_company_write_cannot_redirect_reviewed_order(self):
+        other,center,foreign=self.company_probe();po=self.orders[0];user=self.users[0]
+        po.with_user(user).sph_review();before=self.snapshot(po|foreign)
+        self.denied(lambda:po.with_user(user).write({'company_id':other.id}))
+        self.assertEqual(po.company_id,self.env.company)
+        self.assertEqual(self.snapshot(po|foreign),before)
+
+    def test_malformed_company_context_fails_closed(self):
+        po=self.orders[0].with_user(self.users[0])
+        for value in ([],[True],['1'],False):
+            self.denied(lambda:po.with_context(allowed_company_ids=value).sph_review())
+        for value in (True,False,'1'):
+            self.denied(lambda:po.with_context(force_company=value).sph_review())

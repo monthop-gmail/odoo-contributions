@@ -5,7 +5,7 @@ from odoo.exceptions import AccessError, MissingError
 
 def visible_po_ids(records):
     user=records.env.user
-    domain=[('company_id','in',list(set(records.env.companies.ids)&set(user.sudo().company_ids.ids)))]
+    domain=[('company_id','=',records.env['purchase.order']._sph_po_company('po.scope'))]
     if not user.has_group('sph_core.group_sph_po_hub'):
         domain.append(('sph_center_id','in',user.sudo().sph_center_ids.ids))
     return records.env['purchase.order'].sudo().search(domain).ids
@@ -53,7 +53,9 @@ class POLineScope(models.Model):
         return super().read(*args,**kwargs)
 
     def _search(self,domain,*args,**kwargs):
-        if not self.env.su:self.env['purchase.order']._sph_po_scope(action='po.line.search')
+        if not self.env.su:
+            self.env['purchase.order']._sph_po_scope(action='po.line.search')
+            domain=[('order_id.company_id','=',self.env['purchase.order']._sph_po_company('po.line.search'))]+list(domain)
         return super()._search(domain,*args,**kwargs)
 
 

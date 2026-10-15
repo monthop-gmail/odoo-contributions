@@ -239,6 +239,8 @@ env.cr.commit();env.registry.clear_cache();env.registry.signal_changes()
 assert not env['res.users'].search_count([('group_ids','in',grant.id)])
 exec(compile(open('/opt/sph/scripts/po_scope_live.py').read(),'po_scope_live.py','exec'))
 execute(env,fx,rpc,audit_count,observed,rows,sessions)
+exec(compile(open('/opt/sph/scripts/company_scope_live.py').read(),'company_scope_live.py','exec'))
+execute_company_scope(env,fx,rpc,audit_count,observed,rows)
 print('SPH_G3_RESULT '+json.dumps({'matrix':rows,'deny_rows_observed':sum(r['outcome']=='deny' for r in rows),
     'allow_rows_observed':sum(r['outcome']=='allow' for r in rows),'po_state':'purchase',
     'maker_checker_distinct':True,'settings':{'validation':'two_step','amount':0}}),flush=True)

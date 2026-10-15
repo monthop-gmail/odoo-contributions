@@ -64,10 +64,6 @@ manager/hub grant remains on P0 actors after the matrix. Existing G1 union tests
 now explicitly assert same-center positive access, so membership cannot mask the
 bot/group-union negative checks.
 
-**B7c remains:** company policy/forged allowed-company context approval tests
-(I9) are separate and not claimed closed by the B7b center matrix. No multi-company
-or pilot-readiness claim is made here.
-
 P0 uses clean disposable databases; no upgrade/backfill of historical unowned POs
 is provided. No main merge, deploy, new credentials or real data is authorized.
 
@@ -88,3 +84,31 @@ inside its disposable race worker and revokes it before successful completion;
 this preserves both native/SPH race outcomes without granting stock-manager to
 an SPH role or seeding hub visibility. Native receipt tests cover empty scope,
 same-center allow, cross-center deny and explicit-grant revoke.
+
+## B7c I9 — actual assignments and one active company
+
+`_sph_po_company` is the company choke point used by `_sph_po_scope` before any
+role/review predicate or delegated action. It validates the entire client
+`allowed_company_ids` selection against actual actor assignments, even under sudo;
+unassigned IDs cannot be silently intersected away. The first selected company
+is the active company (default: actor's primary company). Each operation is
+limited to that one company, even if the actor is assigned to additional companies.
+A supplied `force_company` must be an integer equal to that active company; it
+cannot redirect approval. Empty/malformed selections deny. An explicit hub grant
+broadens center visibility only, never company authorization. Direct company
+changes must also pass this gate. Search/line and linked-surface projections keep
+the same active-company boundary.
+
+Tests arrange valid maker/checker, revision, two_step/0 and center scope before
+probing foreign-company confirmation, to prevent another predicate masking the
+company denial. Rollback-only tests add a synthetic second company and prove
+active-company restriction, mixed-batch atomicity, company-access revoke, explicit
+hub non-bypass and sudo non-bypass. The live worker probes forged contexts on an
+otherwise valid reviewed PO, independently observes committed deny rows and
+unchanged revision/state/receipts, then confirms under legitimate context. Its
+second company is a disposable adversarial fixture, not a multi-company seed or
+workflow: subsequent Flow A/B commands rebuild clean single-company databases.
+
+P0 remains a single-company synthetic rehearsal. This evidence does not authorize
+multi-company operation, staging, merge/deploy or pilot start. RFQ mail-send tests
+and mail/attachment projection performance are backlog, not implemented here.
