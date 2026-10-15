@@ -98,6 +98,18 @@ for target in (fx['so'],env['sale.order'].browse(2147483647)):
     observed(env['sale.order'],'operator','sale.reserve.scope','deny',before)
     rows[-1]['path']='foreign' if target==fx['so'] else 'missing'
 
+# SO action_lock/unlock and PO button_lock/unlock both reach the locked guard.
+for key,methods in (('so',('action_lock','action_unlock')),('po',('button_lock','button_unlock'))):
+    for method in methods:
+        deny(fx[key],method,fx[key]._name+'.locked')
+        rows[-1]['path']=method
+        allow(fx[key],method,fx[key]._name+'.locked')
+        rows[-1]['path']=method
+    deny(fx[key],'write',fx[key]._name+'.locked',[{'locked':True}])
+    rows[-1]['path']='write'
+    with env.registry.cursor() as cursor:
+        assert not api.Environment(cursor,SUPERUSER_ID,{})[fx[key]._name].browse(fx[key].id).locked
+
 # The native-style approval refusal is tested by committed state, not exception.
 assert 'result' in rpc('bot',fx['po'],'button_approve',[],{'force':True})
 with env.registry.cursor() as cursor:

@@ -29,6 +29,20 @@ def price_create(records, values_list, parent, internal=False):
     return created
 
 
+def locked_write(records, values, parent):
+    if 'locked' not in values:
+        return price_write(records,values,parent)
+    action=records._name+'.locked'
+    if records.env.user.has_group('sph_core.group_sph_bot'):
+        audit(records,action,'deny');raise AccessError('Unavailable')
+    if records.env.user.has_group('sph_core.group_sph_purchasing_approver'):
+        approver(records,action)
+        result=price_write(records.sudo(),values,parent)
+        audit(records,action,'allow')
+        return result
+    return price_write(records,values,parent)
+
+
 class SalePrice(models.Model):
     _inherit='sale.order.line'
     @api.model_create_multi
@@ -52,7 +66,7 @@ class PurchasePrice(models.Model):
 class SalePricelist(models.Model):
     _inherit='sale.order'
     def write(self, values):
-        return price_write(self,values,lambda record:super(SalePricelist,record))
+        return locked_write(self,values,lambda record:super(SalePricelist,record))
 
 
 class ScrapAuthority(models.Model):
@@ -111,3 +125,10 @@ class BotPicking(models.Model):
         if self.env.uid != 1 and self.env.user.has_group('sph_core.group_sph_bot'):
             audit(self,'stock.validate','deny');raise AccessError('Unavailable')
         return super().button_validate()
+
+
+class PurchaseLocked(models.Model):
+    _inherit='purchase.order'
+
+    def write(self, values):
+        return locked_write(self,values,lambda record:super(PurchaseLocked,record))

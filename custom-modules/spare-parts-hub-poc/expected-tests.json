@@ -61,5 +61,17 @@
   "TestPurchaseAuthority.test_approver_direct_state_transition_denied",
   "TestSPHFixtures.test_native_actor_does_not_expand_picker",
   "TestAtomicReservation.test_cross_center_reserve_denied",
-  "TestAtomicReservation.test_missing_reserve_matches_scope_denial"
+  "TestAtomicReservation.test_missing_reserve_matches_scope_denial",
+  "TestPurchaseAuthority.test_bot_so_action_lock_locked",
+  "TestPurchaseAuthority.test_approver_so_action_lock_locked",
+  "TestPurchaseAuthority.test_bot_so_action_unlock_locked",
+  "TestPurchaseAuthority.test_approver_so_action_unlock_locked",
+  "TestPurchaseAuthority.test_bot_so_write_locked",
+  "TestPurchaseAuthority.test_approver_so_write_locked",
+  "TestPurchaseAuthority.test_bot_po_button_lock_locked",
+  "TestPurchaseAuthority.test_approver_po_button_lock_locked",
+  "TestPurchaseAuthority.test_bot_po_button_unlock_locked",
+  "TestPurchaseAuthority.test_approver_po_button_unlock_locked",
+  "TestPurchaseAuthority.test_bot_po_write_locked",
+  "TestPurchaseAuthority.test_approver_po_write_locked"
 ]

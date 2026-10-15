@@ -213,3 +213,53 @@ class TestPurchaseAuthority(TransactionCase):
         self.allow('po','button_confirm')
         self.assertEqual(self.fx['po'].state,'purchase')
         self.assertTrue(self.fx['po'].picking_ids)
+
+    def lock_denied(self,key,method,values=None):
+        record=self.fx[key]
+        before=method in ('action_unlock','button_unlock')
+        record.locked=before
+        with self.assertRaisesRegex(AccessError,'^Unavailable$'):
+            getattr(record.with_user(self.fx['bot']),method)(*([values] if values else []))
+        self.assertEqual(record.locked,before)
+
+    def lock_allowed(self,key,method,values=None):
+        record=self.fx[key]
+        record.locked=method in ('action_unlock','button_unlock')
+        self.allow(key,method,*([values] if values else []))
+        self.assertEqual(record.locked,method not in ('action_unlock','button_unlock'))
+
+    def test_bot_so_action_lock_locked(self):
+        self.lock_denied('so','action_lock')
+
+    def test_approver_so_action_lock_locked(self):
+        self.lock_allowed('so','action_lock')
+
+    def test_bot_so_action_unlock_locked(self):
+        self.lock_denied('so','action_unlock')
+
+    def test_approver_so_action_unlock_locked(self):
+        self.lock_allowed('so','action_unlock')
+
+    def test_bot_so_write_locked(self):
+        self.lock_denied('so','write',{'locked':True})
+
+    def test_approver_so_write_locked(self):
+        self.lock_allowed('so','write',{'locked':True})
+
+    def test_bot_po_button_lock_locked(self):
+        self.lock_denied('po','button_lock')
+
+    def test_approver_po_button_lock_locked(self):
+        self.lock_allowed('po','button_lock')
+
+    def test_bot_po_button_unlock_locked(self):
+        self.lock_denied('po','button_unlock')
+
+    def test_approver_po_button_unlock_locked(self):
+        self.lock_allowed('po','button_unlock')
+
+    def test_bot_po_write_locked(self):
+        self.lock_denied('po','write',{'locked':True})
+
+    def test_approver_po_write_locked(self):
+        self.lock_allowed('po','write',{'locked':True})
