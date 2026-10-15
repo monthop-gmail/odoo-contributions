@@ -21,11 +21,11 @@ env.cr.commit()
 rows=[]
 
 
-def rpc(role,record,method,args=None,kwargs=None):
+def rpc(role,record,method,args=None,kwargs=None,model_call=False):
     connection=http.client.HTTPConnection('127.0.0.1',8069,timeout=20)
     try:
         body=json.dumps({'jsonrpc':'2.0','id':1,'method':'call','params':{
-            'model':record._name,'method':method,'args':[record.ids]+(args or []),'kwargs':kwargs or {}}})
+            'model':record._name,'method':method,'args':(args or []) if model_call else [record.ids]+(args or []),'kwargs':kwargs or {}}})
         connection.request('POST','/web/dataset/call_kw',body,{
             'Content-Type':'application/json','Cookie':'session_id='+sessions[role]})
         response=connection.getresponse();return json.loads(response.read())
@@ -36,7 +36,7 @@ def audit_count(record,role,action,outcome):
     with env.registry.cursor() as cursor:
         observer=api.Environment(cursor,SUPERUSER_ID,{})
         count=observer['sph.authority.audit'].search_count([('res_model','=',record._name),
-            ('res_id','=',record.id),('actor_uid','=',fx[role].id),('action','=',action),('outcome','=',outcome)])
+            ('res_id','=',record.id or 0),('actor_uid','=',fx[role].id),('action','=',action),('outcome','=',outcome)])
         return count
 
 
@@ -61,6 +61,21 @@ def allow(record,method,action,args=None,kwargs=None):
     assert 'error' not in response and response.get('jsonrpc')=='2.0'
     observed(record,'approver',action,'allow',before)
 
+
+# B5b: exercise public lower-level mutation entrypoints over committed HTTP.
+deny(fx['scrap'],'do_scrap','scrap.validate')
+quant_model=env['stock.quant']
+before=audit_count(quant_model,'bot','quant.create','deny')
+response=rpc('bot',quant_model,'create',[{
+    'product_id':fx['product'].id,'location_id':fx['quant'].location_id.id,
+    'quantity':1}],model_call=True)
+assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+# A denied create has no resource ID: its plain audit res_id is zero.
+observed(quant_model,'bot','quant.create','deny',before)
+with env.registry.cursor() as cursor:
+    observer=api.Environment(cursor,SUPERUSER_ID,{})
+    assert observer['stock.scrap'].browse(fx['scrap'].id).state=='draft'
+    assert observer['stock.quant'].browse(fx['quant'].id).quantity==fx['quant'].quantity
 
 # F3: a read-only reservation role cannot convert a draft SO to a commitment.
 draft=fx['so_line'].order_id

@@ -271,3 +271,14 @@ now requires `Unavailable`, unchanged committed values and durable SPH deny-audi
 rows, so a missing ACL, foreign-center denial or expired session cannot stand in
 for the authority guard. Sanitized results are in `B5a-price-probe.json`.
 B5b/B5c/B5d and G4 remain separate queued work; this closes only F-G3-2.
+
+### B5b authority path coverage
+
+Six individually bound bot-denial tests cover SO-line priced creation, PO-line
+creation outside the private draft capability, `do_scrap`, direct scrap completion,
+quant creation, and `_update_available_quantity`. Existing guards cover these paths;
+no authority expansion is needed. Transaction tests assert denial and unchanged
+state without asserting independently committed deny rows. The live G3 matrix also
+calls `do_scrap` and quant creation over HTTP, checking durable deny audits from a
+fresh cursor after request rollback. Denied creation uses plain `res_id=0` because
+no resource was created. All data and actions are synthetic harness fixtures.
