@@ -97,3 +97,9 @@ class TestSPHFixtures(TransactionCase):
         for profile in (None,'demo','pilot'):
             with self.assertRaisesRegex(ValidationError,'disposable-test-harness'):
                 self.env['sph.center']._seed_flow_a(profile=profile)
+
+    def test_flow_a_seed_rejects_multiple_companies(self):
+        self.env['res.company'].create({'name':'FIXTURE forbidden second company'})
+        with self.assertRaisesRegex(ValidationError,'single-company'):
+            self.env['sph.center']._seed_flow_a(profile='disposable-test-harness')
+        self.assertFalse(self.env.ref('sph_core.fixture_flow_a_product',raise_if_not_found=False))

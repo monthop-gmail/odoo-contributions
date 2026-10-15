@@ -40,6 +40,7 @@ def main():
     args=parser.parse_args()
     if args.running:
         execute();return
+    print('WARNING: wipes this checkout disposable harness volumes. NEVER point at a non-disposable DB.',file=sys.stderr,flush=True)
     harness=[sys.executable,str(ROOT/'scripts/harness.py')]
     subprocess.run(harness+['down'],check=True)
     try:

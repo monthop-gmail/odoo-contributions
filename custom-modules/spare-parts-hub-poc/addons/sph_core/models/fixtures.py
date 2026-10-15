@@ -115,6 +115,8 @@ class SphCenterFixtures(models.Model):
     def _seed_flow_a(self, profile=None):
         if profile != 'disposable-test-harness' or self.env.cr.dbname != 'sph_poc':
             raise ValidationError('FIXTURE Flow A requires disposable-test-harness / sph_poc only.')
+        if self.env['res.company'].search_count([]) != 1:
+            raise ValidationError('FIXTURE Flow A requires a single-company harness.')
         if self.env.ref('sph_core.fixture_flow_a_product',raise_if_not_found=False):
             raise ValidationError('FIXTURE Flow A requires a clean harness.')
 

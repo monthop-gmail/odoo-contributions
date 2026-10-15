@@ -369,3 +369,9 @@ in evidence. Existing G1/G2/G3 artifacts and the 77-test floor remain intact.
 Review #94: mixed locked writes by an approver are rejected, role and scope reserve
 denials both use UserError(Unavailable), and legacy PO state=done is defensively
 rejected only (Odoo 19 locking uses boolean locked).
+
+**WIPE WARNING:** `flow_a.py` deletes this checkout's disposable harness volumes
+before starting. Never point it at a non-disposable database or reuse its compose
+project for valuable data. Flow A now requires one company and deletes all of its
+server-side sessions on success or failure, including `--running`; evidence has
+no session IDs.
