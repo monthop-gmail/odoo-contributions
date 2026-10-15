@@ -22,6 +22,8 @@ def g2_race():
 def g3_authority():
     from g3_authority import execute
     execute()
+    from flow_a import execute as flow_a
+    flow_a()
 
 
 def run_suite(junit_path=JUNIT):

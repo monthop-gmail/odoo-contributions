@@ -337,3 +337,35 @@ The native stock-manager actor must never be reused in a demo/pilot seed; no suc
 seed is supplied here. A future demo seed must be separate and omit this actor.
 
 M5 pins exact central `lot_stock_id` availability with child-only stock denied; S2 `child_of` support remains out of scope.
+
+### B6b: one-command synthetic Flow A
+
+From this folder run `python3 scripts/flow_a.py`. It removes this checkout's
+harness volumes, starts a clean pinned Odoo 19 harness, seeds a distinct synthetic
+Flow A dataset, runs two concurrent HTTP reservists, writes evidence, and always
+tears down the harness. Docker/Compose and the existing Python harness are needed.
+CI runs the same worker after real G3 via the existing live step; no workflow or
+permission change is needed. `--running` is for an already initialized harness.
+
+The Flow A seed accepts only disposable-test-harness / sph_poc, creates two
+FIXTURE FLOW A centers, two scoped human reservists and two portal requesters,
+and one catalog item with exactly one free unit at the exact central location.
+It creates no stock-manager actor/grant; existing bot and approver personas are
+referenced, and no bot approves anything. The base gate-test harness retains its
+separate test-only native competitor, which is not part of the Flow A seed.
+
+Synthetic authorized setup confirms Sales orders **before** reservation, respecting
+the existing F3 boundary. The winner's reservation links to that confirmed SO and
+native move; reservation never confirms a draft SO. Both HTTP requests wait behind
+a lock gate; fresh observers require exactly one allocation, loser Unavailable,
+zero double allocation and no negative stock. This is synthetic evidence, not a
+business-policy or pilot sign-off. Flow B remains outside this command.
+
+`evidence/Flow-A-results.json` records commit, pins, synthetic center/persona/product/
+location IDs, SOs, winner reservation->SO->move link and observed outcomes;
+`Flow-A-assertions.xml` records success. Session material is never printed or saved
+in evidence. Existing G1/G2/G3 artifacts and the 77-test floor remain intact.
+
+Review #94: mixed locked writes by an approver are rejected, role and scope reserve
+denials both use UserError(Unavailable), and legacy PO state=done is defensively
+rejected only (Odoo 19 locking uses boolean locked).
