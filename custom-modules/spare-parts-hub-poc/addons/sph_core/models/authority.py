@@ -3,6 +3,7 @@ from contextvars import ContextVar
 from contextlib import contextmanager
 from odoo import api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError
+from odoo.tools import config
 
 _INTERNAL = ContextVar('sph_internal_stock', default=False)
 
@@ -22,7 +23,7 @@ def audit(records, action, outcome):
     if outcome == 'deny':
         # Uncommitted unit fixtures/DDL are invisible to another cursor. Deny rows
         # are asserted only by the committed live suite, never TransactionCase.
-        if records.env.registry.in_test_mode(): return
+        if config['test_enable']: return
         with records.env.registry.cursor() as cursor:
             api.Environment(cursor,SUPERUSER_ID,{})['sph.authority.audit'].create(values)
             cursor.commit()
