@@ -18,7 +18,10 @@ class SalePrice(models.Model):
     def create(self, values_list):
         if self.env.uid != 1 and any('price_unit' in values for values in values_list):
             approver(self,'sale.order.line.price_unit')
-        return super().create(values_list)
+        records=super().create(values_list)
+        if self.env.uid != 1 and any('price_unit' in values for values in values_list):
+            audit(records,'sale.order.line.price_unit','allow')
+        return records
     def write(self, values):
         return price_write(self,values,lambda record:super(SalePrice,record))
 
@@ -29,7 +32,10 @@ class PurchasePrice(models.Model):
     def create(self, values_list):
         if self.env.uid != 1 and not _DRAFT.get() and any('price_unit' in values for values in values_list):
             approver(self,'purchase.order.line.price_unit')
-        return super().create(values_list)
+        records=super().create(values_list)
+        if self.env.uid != 1 and not _DRAFT.get() and any('price_unit' in values for values in values_list):
+            audit(records,'purchase.order.line.price_unit','allow')
+        return records
     def write(self, values):
         if self.env.uid != 1 and self.env.user.has_group('sph_core.group_sph_bot') and any(line.sudo().order_id.state != 'draft' for line in self):
             audit(self,'po.line.write','deny');raise AccessError('Unavailable')

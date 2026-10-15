@@ -109,8 +109,9 @@ class PurchaseAuthority(models.Model):
         if self.env.user.has_group('sph_core.group_sph_bot') and (
             any(order.sudo().state != 'draft' for order in self) or values.get('state','draft') != 'draft'):
             audit(self,'po.write','deny');raise AccessError('Unavailable')
+        before_state=','.join(self.sudo().mapped('state')) if values.get('state')=='purchase' else None
         result=super().write(values)
-        if values.get('state') == 'purchase': audit(self,'po.state','allow')
+        if values.get('state') == 'purchase': audit(self,'po.state','allow',before_state=before_state)
         return result
 
     def action_rfq_send(self):
