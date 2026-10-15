@@ -53,7 +53,11 @@ def deny(record,method,action,args=None,kwargs=None):
 
 def allow(record,method,action,args=None,kwargs=None):
     before=audit_count(record,'approver',action,'allow')
-    assert 'result' in rpc('approver',record,method,args,kwargs)
+    response=rpc('approver',record,method,args,kwargs)
+    if 'error' in response:
+        error=response['error'].get('data',{})
+        print('SPH_G3_CHECK '+json.dumps({'action':action,'error_type':error.get('name'),'message':error.get('message')}),flush=True)
+    assert 'result' in response
     observed(record,'approver',action,'allow',before)
 
 

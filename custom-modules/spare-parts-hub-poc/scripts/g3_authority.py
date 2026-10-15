@@ -19,7 +19,7 @@ except Exception as error:
     final=[line for line in lines if line.startswith('SPH_G3_RESULT ')]
     if result.returncode or not final:
         for line in lines:
-            if line.startswith('SPH_G3_FAILURE '):print(line)
+            if line.startswith(('SPH_G3_FAILURE ','SPH_G3_CHECK ')):print(line)
         raise RuntimeError('G3 live assertions failed')
     data=json.loads(final[-1].split(' ',1)[1])
     directory=ROOT/'evidence';directory.mkdir(exist_ok=True)
