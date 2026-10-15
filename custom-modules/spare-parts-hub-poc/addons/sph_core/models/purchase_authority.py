@@ -12,6 +12,11 @@ class PurchaseAuthority(models.Model):
     sph_review_digest=fields.Char(readonly=True,copy=False)
 
     def _sph_digest(self):
+        approver(self,'po.digest')
+        return self._sph_digest_value()
+
+    def _sph_digest_value(self):
+        # Private audit snapshot; RPC forbids underscore methods. No authorization.
         self.ensure_one()
         order=self.sudo()
         payload=[order.partner_id.id,order.currency_id.id,order.company_id.id,
@@ -54,12 +59,13 @@ class PurchaseAuthority(models.Model):
         return order.id
 
     def sph_draft(self, quantity=None):
+        self._sph_po_scope(action='po.draft')
         self.ensure_one()
         order=self.sudo()
         if order.sph_maker_uid != self.env.uid or order.state != 'draft':
-            raise AccessError('Unavailable')
+            return self._sph_po_deny('po.draft')
         if quantity is not None:
-            if quantity<=0: raise AccessError('Unavailable')
+            if quantity<=0:return self._sph_po_deny('po.draft')
             order.order_line.write({'product_qty':quantity})
         return {'state':order.state,'lines':[{'product_id':line.product_id.id,
             'quantity':line.product_qty,'price':line.price_unit} for line in order.order_line]}
@@ -67,7 +73,7 @@ class PurchaseAuthority(models.Model):
     def sph_review(self):
         approver(self,'po.review',maker=True)
         for order in self.sudo():
-            order.write({'sph_review_digest':order._sph_digest(),'sph_reviewer_uid':self.env.uid})
+            order.write({'sph_review_digest':order._sph_digest_value(),'sph_reviewer_uid':self.env.uid})
         audit(self,'po.review','allow')
         return True
 
@@ -75,15 +81,13 @@ class PurchaseAuthority(models.Model):
         approver(self,'po.approve',maker=True)
         for order in self.sudo():
             if (order.company_id.po_double_validation != 'two_step' or order.company_id.po_double_validation_amount != 0 or
-                order.sph_reviewer_uid != self.env.uid or order.sph_review_digest != order._sph_digest()):
+                order.sph_reviewer_uid != self.env.uid or order.sph_review_digest != order._sph_digest_value()):
                 audit(self,'po.approve','deny')
                 raise AccessError('Unavailable')
 
     def _approval_allowed(self):
-        if self.env.user.has_group('sph_core.group_sph_purchasing_approver') and not self.env.user.has_group('sph_core.group_sph_bot'):
-            self._sph_check_review()
-            return True
-        return super()._approval_allowed()
+        self._sph_check_review()
+        return True
 
     def button_confirm(self):
         self._sph_check_review()
@@ -93,6 +97,7 @@ class PurchaseAuthority(models.Model):
         return result
 
     def button_approve(self, force=False):
+        self._sph_po_scope(action='po.approve')
         if self.env.user.has_group('sph_core.group_sph_bot'):
             audit(self,'po.approve','deny')
             return {}  # Assert unchanged state; a silent native-style refusal.
@@ -103,6 +108,8 @@ class PurchaseAuthority(models.Model):
         return result
 
     def write(self, values):
+        if {'state','date_approve','sph_maker_uid','sph_review_digest','sph_reviewer_uid'} & values.keys():
+            self._sph_po_scope(action='po.write')
         if {'sph_maker_uid'} & values.keys():
             audit(self,'po.identity','deny');raise AccessError('Unavailable')
         if {'sph_review_digest','sph_reviewer_uid'} & values.keys():

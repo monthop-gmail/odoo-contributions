@@ -61,7 +61,7 @@ class TestPurchaseAuthority(TransactionCase):
         self.allow('po','button_confirm')
         self.assertEqual(self.fx['po'].state,'purchase')
         evidence=self.env['sph.authority.audit'].search([('res_model','=','purchase.order'),('res_id','=',self.fx['po'].id),('action','=','po.state')],limit=1)
-        self.assertEqual(evidence.revision_digest,self.fx['po']._sph_digest())
+        self.assertEqual(evidence.revision_digest,self.fx['po'].with_user(self.fx['approver'])._sph_digest())
         self.assertEqual((evidence.before_state,evidence.after_state),('draft','purchase'))
 
     def test_direct_state_write_and_create_denied(self):

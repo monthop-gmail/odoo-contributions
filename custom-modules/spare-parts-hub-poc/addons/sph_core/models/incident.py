@@ -39,6 +39,7 @@ def incident_write(records,values,parent):
 
 def incident_create(records,values_list,parent):
     if any(values.get('sph_incident_ref') for values in values_list):
+        if records._name=='purchase.order':records._sph_po_scope(action='incident.reference')
         audit(records,'incident.reference','deny');raise AccessError('Unavailable')
     return parent(records).create(values_list)
 

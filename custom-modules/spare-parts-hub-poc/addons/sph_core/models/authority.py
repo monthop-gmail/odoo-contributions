@@ -41,7 +41,8 @@ def audit(records, action, outcome, before_state=None):
     for record in records:
         current=record.sudo()
         state=current.state if 'state' in current._fields else False
-        digest=current._sph_digest() if current._name=='purchase.order' else False
+        # Internal audit snapshot only; never call the authorized digest endpoint here.
+        digest=current._sph_digest_value() if current._name=='purchase.order' else False
         values.append({'res_model':records._name,'res_id':record.id,'actor_uid':records.env.uid,
             'actor_kind':kind,'action':action,'outcome':outcome,'revision_digest':digest,
             'before_state':before_state if before_state is not None else state,'after_state':state,
@@ -66,6 +67,10 @@ def audit(records, action, outcome, before_state=None):
 
 def approver(records, action, maker=False):
     # No uid-1, sudo or cron exception: the actual actor must have this role.
+    if records._name=='purchase.order':
+        records._sph_po_scope(action=action)
+    elif records._name=='purchase.order.line':
+        records.sudo().order_id._sph_po_scope(action=action)
     user=records.env.user
     allowed=user.active and not user.has_group('sph_core.group_sph_bot') and user.has_group('sph_core.group_sph_purchasing_approver')
     if maker:

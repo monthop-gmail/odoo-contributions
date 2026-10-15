@@ -15,15 +15,15 @@ class PurchaseScope(models.Model):
         audit(self.browse(),action,'deny')
         raise AccessError('Unavailable') from None
 
-    def _sph_po_scope(self,creating=False,company_id=None):
+    def _sph_po_scope(self,creating=False,company_id=None,action='po.scope'):
         """Central center/company hook; remaining capabilities are B7b/B7c."""
         actor=self.env.user
         centers=actor.sudo().sph_center_ids
         try:
             companies=set(self.env.companies.ids)&set(actor.sudo().company_ids.ids)
         except AccessError:
-            return self._sph_po_deny()
-        if not companies:return self._sph_po_deny()
+            return self._sph_po_deny(action)
+        if not companies:return self._sph_po_deny(action)
         if creating:
             if CENTER_CONTEXT.intersection(self.env.context) or len(centers)!=1:
                 return self._sph_po_deny('po.owner')
@@ -31,12 +31,13 @@ class PurchaseScope(models.Model):
             if company_id not in companies or centers.company_id.id!=company_id:
                 return self._sph_po_deny('po.owner')
             return centers
+        if CENTER_CONTEXT.intersection(self.env.context):return self._sph_po_deny(action)
         hub=actor.has_group('sph_core.group_sph_po_hub')
-        if not hub and not centers:return self._sph_po_deny()
+        if not hub and not centers:return self._sph_po_deny(action)
         if self.ids:
             domain=[('id','in',self.ids),('company_id','in',list(companies))]
             if not hub:domain.append(('sph_center_id','in',centers.ids))
-            if len(self.sudo().search(domain))!=len(self):return self._sph_po_deny()
+            if len(self.sudo().search(domain))!=len(self):return self._sph_po_deny(action)
         return True
 
     @api.model_create_multi
