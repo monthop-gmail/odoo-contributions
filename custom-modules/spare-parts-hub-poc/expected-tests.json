@@ -102,5 +102,6 @@
   "TestPOCenterScope.test_client_center_kwargs_and_context_denied",
   "TestPOCenterScope.test_explicit_hub_grant_and_revoke",
   "TestPOCenterScope.test_no_seeded_hub_grants_or_acl_implication",
-  "TestPOCenterScope.test_owner_immutable"
+  "TestPOCenterScope.test_owner_immutable",
+  "TestPurchaseAuthority.test_bot_hub_and_native_group_union_denied"
 ]

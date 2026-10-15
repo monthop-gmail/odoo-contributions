@@ -91,6 +91,9 @@ class TestCenterIsolation(TransactionCase):
         bot.write({'sph_center_ids': [Command.set(self.orders[0].sph_center_id.ids)],
             'group_ids': [Command.link(self.env.ref('sales_team.group_sale_manager').id),
                           Command.link(self.env.ref('stock.group_stock_manager').id)]})
+        self.assertEqual(bot.sph_center_ids,self.orders[0].sph_center_id)
+        self.assertEqual(self.orders[0].sph_center_id.partner_id.commercial_partner_id,
+            self.orders[1].sph_center_id.partner_id.commercial_partner_id)
         self.orders[0].with_user(bot).check_access('read')
         with self.assertRaises(AccessError):
             self.orders[1].with_user(bot).read(['name'])

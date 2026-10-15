@@ -41,6 +41,8 @@ class TestPurchaseAuthority(TransactionCase):
         return result
 
     def test_ai_prepare_only(self):
+        self.assertEqual(self.fx['bot'].sph_center_ids,self.fx['po'].sph_center_id)
+        self.assertEqual(self.fx['approver'].sph_center_ids,self.fx['po'].sph_center_id)
         self.assertEqual(self.fx['po'].state,'draft')
         self.assertEqual(self.fx['po'].sph_maker_uid,self.fx['bot'].id)
         self.assertEqual(self.fx['po'].with_user(self.fx['bot']).sph_draft(quantity=2)['lines'][0]['quantity'],2)
@@ -367,3 +369,19 @@ class TestPurchaseAuthority(TransactionCase):
             po.with_user(self.fx['approver']).with_context(allowed_company_ids=self.fx['approver'].company_ids.ids).write({
                 'sph_incident_ref':'fixture:incident:foreign-company'})
         self.assertFalse(po.sph_incident_ref)
+
+    def test_bot_hub_and_native_group_union_denied(self):
+        bot=self.fx['bot']
+        bot.group_ids=[Command.link(self.env.ref(xmlid).id) for xmlid in (
+            'sph_core.group_sph_po_hub','sph_core.group_sph_purchasing_approver',
+            'purchase.group_purchase_manager','stock.group_stock_manager')]
+        self.assertEqual(bot.sph_center_ids,self.fx['po'].sph_center_id)
+        self.fx['po'].with_user(bot).check_access('read')
+        for method in ('sph_review','button_confirm','action_rfq_send'):
+            self.deny('po',method)
+        self.deny('po','write',{'state':'purchase'})
+        self.deny('po','write',{'sph_incident_ref':'fixture:union'})
+        self.fx['po'].with_user(bot).button_approve(force=True)
+        self.assertEqual(self.fx['po'].state,'draft')
+        self.assertFalse(self.fx['po'].sph_review_digest)
+        self.assertFalse(self.fx['po'].picking_ids)
