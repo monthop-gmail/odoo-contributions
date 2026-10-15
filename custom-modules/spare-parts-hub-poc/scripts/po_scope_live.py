@@ -48,7 +48,16 @@ def execute(env,fx,rpc,audit_count,observed,rows,sessions):
         attachment=env['ir.attachment'].create({'name':'FIXTURE PO binary',
             'raw':b'FIXTURE restricted content','res_model':'purchase.order','res_id':foreign.id,
             'access_token':'fixture-po-binary-'+str(index)})
+        message=env['mail.message'].create({'model':'purchase.order','res_id':foreign.id,
+            'body':'FIXTURE scoped thread','message_type':'comment'})
         sync()
+        for linked,field in ((message,'body'),(attachment,'raw'),(foreign.order_line,'id')):
+            action='po.line.read' if linked._name=='purchase.order.line' else 'po.link.read'
+            before=audit_count(env['purchase.order'],'approver',action,'deny')
+            response=rpc('approver',linked,'read',[[field]])
+            assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+            observed(env['purchase.order'],'approver',action,'deny',before)
+            rows[-1]['path']='b7b_read_'+str(index)+'_'+linked._name
         for path,action in (('/my/purchase/'+str(foreign.id)+'?access_token='+token,'po.portal'),
                 ('/my/purchase/2147483647?access_token='+token,'po.portal'),
                 ('/web/content/'+str(attachment.id)+'?access_token=fixture-po-binary-'+str(index),'po.binary')):
