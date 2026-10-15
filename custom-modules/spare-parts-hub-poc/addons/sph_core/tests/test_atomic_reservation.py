@@ -23,9 +23,10 @@ class TestAtomicReservation(TransactionCase):
     def test_scope_and_ai_denial(self):
         order = self.order()
         for role in ('sph_bot','sph_center_requester','sph_purchasing_approver'):
-            with self.assertRaisesRegex(UserError,'^Unavailable$'):
+            with self.assertRaisesRegex(UserError,'^Unavailable$') as cm:
                 order.with_user(self.env.ref('sph_core.fixture_user_'+role)).sph_reserve('FIXTURE denied')
 
+            self.assertIs(type(cm.exception),UserError)
     def test_reserve_readback(self):
         order = self.order(); result = self.reserve(order)
         self.assertEqual(result['status'],'reserved')
@@ -54,7 +55,8 @@ class TestAtomicReservation(TransactionCase):
 
     def test_reserve_beyond_free_denied(self):
         order = self.order(2)
-        with self.assertRaises(UserError): self.reserve(order)
+        with self.assertRaises(UserError): self.reserve(order as cm:
+        self.assertIs(type(cm.exception),UserError)
         self.assertEqual(order.state,'sale')
         self.assertFalse(order.sph_reservation_ids)
 
@@ -63,7 +65,8 @@ class TestAtomicReservation(TransactionCase):
         move = order.sph_reservation_ids.move_id
         move.quantity = 2
         move.picked = True
-        with self.assertRaises(UserError): move.picking_id.button_validate()
+        with self.assertRaises(UserError): move.picking_id.button_validate( as cm:
+        self.assertIs(type(cm.exception),UserError)
         self.assertNotEqual(move.state,'done')
 
     def test_partial_and_backorder(self):
@@ -94,15 +97,17 @@ class TestAtomicReservation(TransactionCase):
     def test_native_negative_quant_denied(self):
         product = self.env.ref('sph_core.fixture_part_04').product_variant_id
         location = self.env.ref('sph_core.fixture_wh_central').lot_stock_id
-        with self.assertRaises(UserError):
+        with self.assertRaises(UserError) as cm:
             self.env['stock.quant']._update_available_quantity(product,location,-2)
 
+        self.assertIs(type(cm.exception),UserError)
     def test_readonly_reserve_cannot_confirm(self):
         order=self.order(confirm=False)
         for role in ('sph_hub_operator','sph_warehouse_picker'):
             scoped=order.with_user(self.env.ref('sph_core.fixture_user_'+role))
             with self.assertRaises(AccessError): scoped.check_access('write')
-            with self.assertRaises(UserError): scoped.sph_reserve('FIXTURE no confirmation')
+            with self.assertRaises(UserError): scoped.sph_reserve('FIXTURE no confirmation' as cm:
+            self.assertIs(type(cm.exception),UserError)
         self.assertEqual(order.state,'draft')
         self.assertFalse(order.picking_ids)
         self.assertFalse(order.sph_reservation_ids)
@@ -124,8 +129,9 @@ class TestAtomicReservation(TransactionCase):
             actor.sph_center_ids=[Command.set(own.ids)]
             order=self.order()
             order.write({'sph_center_id':foreign.id,'partner_id':foreign.partner_id.id})
-            with self.assertRaisesRegex(UserError,'Unavailable'):
+            with self.assertRaisesRegex(UserError,'Unavailable') as cm:
                 order.with_user(actor).sph_reserve('FIXTURE foreign center')
+            self.assertIs(type(cm.exception),UserError)
             self.assertFalse(order.sph_reservation_ids)
             self.assertFalse(any(order.picking_ids.move_ids.mapped('quantity')))
             self.assertEqual(order.state,'sale')
@@ -134,9 +140,10 @@ class TestAtomicReservation(TransactionCase):
         actor=self.env.ref('sph_core.fixture_user_sph_hub_operator')
         actor.sph_center_ids=[Command.set(self.env.ref('sph_core.fixture_center_shared_a').ids)]
         missing=self.env['sale.order'].browse(2147483647)
-        with self.assertRaisesRegex(UserError,'^Unavailable$'):
+        with self.assertRaisesRegex(UserError,'^Unavailable$') as cm:
             missing.with_user(actor).sph_reserve('FIXTURE missing')
 
+        self.assertIs(type(cm.exception),UserError)
     def test_reserve_exact_location_ignores_child_stock(self):
         order=self.order()
         product=order.order_line.product_id
@@ -148,8 +155,9 @@ class TestAtomicReservation(TransactionCase):
         quants=self.env['stock.quant'].search([('product_id','=',product.id),('location_id','child_of',root.id)])
         self.assertEqual(sum(quants.filtered(lambda q:q.location_id==root).mapped('quantity')),0)
         self.assertEqual(sum(quants.filtered(lambda q:q.location_id==child).mapped('quantity')),1)
-        with self.assertRaisesRegex(UserError,'^Unavailable$'):
+        with self.assertRaisesRegex(UserError,'^Unavailable$') as cm:
             self.reserve(order,'FIXTURE exact location only')
+        self.assertIs(type(cm.exception),UserError)
         self.assertFalse(order.sph_reservation_ids)
         self.assertFalse(any(order.picking_ids.move_ids.mapped('quantity')))
         self.assertFalse(any(quants.mapped('reserved_quantity')))

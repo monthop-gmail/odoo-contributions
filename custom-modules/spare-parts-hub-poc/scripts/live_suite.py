@@ -1,6 +1,8 @@
 """Out-of-process real G1/G2/G3 evidence; G4 sign-off remains pending."""
 from pathlib import Path
 import time
+import subprocess
+import sys
 import traceback
 import xml.etree.ElementTree as ET
 from g2_race import Unrunnable
@@ -26,13 +28,11 @@ def g3_authority():
 
 
 def flow_a():
-    from flow_a import execute
-    execute()
+    subprocess.run([sys.executable,str(ROOT/'scripts/flow_a.py')],check=True)
 
 
 def flow_b():
-    from flow_b import execute
-    execute()
+    subprocess.run([sys.executable,str(ROOT/'scripts/flow_b.py')],check=True)
 
 
 def run_suite(junit_path=JUNIT):

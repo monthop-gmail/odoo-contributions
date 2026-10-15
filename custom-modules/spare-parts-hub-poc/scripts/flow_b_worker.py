@@ -1,5 +1,6 @@
 """SYNTHETIC shortage -> bot draft -> human review/confirmation over live HTTP."""
 import http.client
+import sys
 import json
 from odoo import api, Command, SUPERUSER_ID
 from odoo.http import root
@@ -72,7 +73,15 @@ try:
             'maker_uid':po.sph_maker_uid,'checker_uid':po.sph_reviewer_uid,'maker_checker_distinct':True,
             'human_confirm_allow_audit':True}
 finally:
+    scenario_failed=sys.exc_info()[0] is not None
+    cleanup_failed=False
     for sid in sessions.values():
-        root.session_store.delete(root.session_store.get(sid))
+        try:
+            root.session_store.delete(root.session_store.get(sid))
+        except Exception:
+            cleanup_failed=True
+            print('SPH_SESSION_CLEANUP_FAILURE: Flow B',file=sys.stderr,flush=True)
+    if cleanup_failed and not scenario_failed:
+        raise RuntimeError('Flow B session cleanup failed')
 result['sessions_cleaned']=True
 print('SPH_FLOW_B_RESULT '+json.dumps(result),flush=True)

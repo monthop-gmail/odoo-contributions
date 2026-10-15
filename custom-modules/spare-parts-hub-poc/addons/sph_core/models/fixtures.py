@@ -181,6 +181,9 @@ class SphCenterFixtures(models.Model):
             'group_ids':[Command.set(self.env.ref('sph_core.group_sph_hub_operator').ids)],
             'sph_center_ids':[Command.set(center.ids)]})
         actor.partner_id.write({'sph_fixture':True,'sph_center_id':center.id,'company_id':self.env.company.id})
+        for key,record in (('partner',partner),('center',center),('reservist',actor)):
+            self.env['ir.model.data'].create({'module':'sph_core','name':'fixture_flow_b_'+key,
+                'model':record._name,'res_id':record.id,'noupdate':True})
         # G1 deliberately broadens its shared bot for union-negative tests. Keep
         # that regression intact; this scenario uses a fresh bot with the same role.
         bot=self.env['res.users'].with_context(no_reset_password=True).create({
@@ -189,6 +192,8 @@ class SphCenterFixtures(models.Model):
             'group_ids':[Command.set(self.env.ref('sph_core.group_sph_bot').ids)],
             'sph_center_ids':[Command.set(center.ids)]})
         bot.partner_id.write({'sph_fixture':True,'sph_center_id':center.id,'company_id':self.env.company.id})
+        self.env['ir.model.data'].create({'module':'sph_core','name':'fixture_flow_b_bot',
+            'model':'res.users','res_id':bot.id,'noupdate':True})
         approver=self.env.ref('sph_core.fixture_user_sph_purchasing_approver')
         if any(user.has_group('stock.group_stock_manager') for user in actor|bot|approver):
             raise ValidationError('FIXTURE Flow B must not grant stock-manager authority.')

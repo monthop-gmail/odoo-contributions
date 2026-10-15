@@ -268,7 +268,14 @@ class TestPurchaseAuthority(TransactionCase):
         record=self.fx['so']
         before=record.partner_id
         with self.assertRaisesRegex(AccessError,'^Unavailable$'):
-            record.with_user(self.fx['approver']).write({'locked':True,'partner_id':self.fx['supplier'].id})
+            try:
+                record.with_user(self.fx['approver']).write({'locked':True,'partner_id':self.fx['supplier'].id})
+            except AccessError:
+                self.assertTrue(self.env['sph.authority.audit'].search_count([
+                    ('res_model','=',record._name),('res_id','=',record.id),
+                    ('actor_uid','=',self.fx['approver'].id),
+                    ('action','=',record._name+'.locked.bundle'),('outcome','=','deny')]))
+                raise
         self.assertFalse(record.locked)
         self.assertEqual(record.partner_id,before)
 
@@ -276,6 +283,13 @@ class TestPurchaseAuthority(TransactionCase):
         record=self.fx['po']
         before=record.partner_id
         with self.assertRaisesRegex(AccessError,'^Unavailable$'):
-            record.with_user(self.fx['approver']).write({'locked':True,'partner_id':self.fx['supplier'].id})
+            try:
+                record.with_user(self.fx['approver']).write({'locked':True,'partner_id':self.fx['supplier'].id})
+            except AccessError:
+                self.assertTrue(self.env['sph.authority.audit'].search_count([
+                    ('res_model','=',record._name),('res_id','=',record.id),
+                    ('actor_uid','=',self.fx['approver'].id),
+                    ('action','=',record._name+'.locked.bundle'),('outcome','=','deny')]))
+                raise
         self.assertFalse(record.locked)
         self.assertEqual(record.partner_id,before)

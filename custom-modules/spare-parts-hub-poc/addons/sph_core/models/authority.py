@@ -50,7 +50,12 @@ def audit(records, action, outcome, before_state=None):
     if outcome == 'deny':
         # Uncommitted unit fixtures/DDL are invisible to another cursor. Deny rows
         # are asserted only by the committed live suite, never TransactionCase.
-        if config['test_enable']: return
+        if config['test_enable']:
+            # Bundle regression tests inspect only same-cursor, rollback-only rows.
+            # Durable separate-cursor denials remain live-suite-only.
+            if action.endswith('.bundle'):
+                records.env['sph.authority.audit'].sudo().create(values)
+            return
         with records.env.registry.cursor() as cursor:
             api.Environment(cursor,SUPERUSER_ID,{})['sph.authority.audit'].create(values)
             cursor.commit()

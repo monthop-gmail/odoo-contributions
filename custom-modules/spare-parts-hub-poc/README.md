@@ -403,3 +403,16 @@ These are synthetic scenario results, not pilot sign-off. Dashboard and War Room
 remain outside this round.
 
 Flow B uses a separate bot fixture so G1's deliberately widened group-union bot stays untouched; no G1/G3 test grants or assertions are removed.
+
+### B6d Part 0: clean CI and audit-test boundary
+
+CI executes the full Flow A and B CLI paths independently: each down -> fresh
+harness up -> scenario -> always down. Host evidence survives volume deletion;
+scenario record IDs belong to separate disposable DB epochs and must not be joined
+across scenarios. Dedicated live testcases remain separate. Bundle bound tests
+now inspect rollback-only same-cursor deny rows before the assertion savepoint
+rolls back; this narrow test-mode sink never commits and is not durable evidence.
+Runtime deny audits retain their separate committed cursor. Cleanup logs contain
+only a fixed failure label; cleanup failure cannot mask an existing scenario
+error, and a failed cleanup on an otherwise successful scenario fails closed.
+Flow B center, partner, reservist and bot now have stable fixture_flow_b_* xmlids.

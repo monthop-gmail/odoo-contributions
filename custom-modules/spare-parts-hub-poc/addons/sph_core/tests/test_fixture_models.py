@@ -109,6 +109,8 @@ class TestSPHFixtures(TransactionCase):
             with self.assertRaisesRegex(ValidationError,'disposable-test-harness'):
                 self.env['sph.center']._seed_flow_b(profile=profile)
         data=self.env['sph.center']._seed_flow_b(profile='disposable-test-harness')
+        for key,field in (('center','center_id'),('reservist','reservist_uid'),('bot','bot_uid')):
+            self.assertEqual(self.env.ref('sph_core.fixture_flow_b_'+key).id,data[field])
         quants=self.env['stock.quant'].search([('product_id','=',data['product_id']),('location_id','=',data['location_id'])])
         self.assertEqual(sum(q.quantity-q.reserved_quantity for q in quants),0)
         self.assertNotEqual(data['bot_uid'],data['approver_uid'])

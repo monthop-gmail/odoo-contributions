@@ -1,6 +1,7 @@
 """SYNTHETIC Flow A: committed setup, two HTTP reservists, fresh observer."""
 import concurrent.futures
 import http.client
+import sys
 import json
 import time
 from odoo import api, Command, SUPERUSER_ID
@@ -78,7 +79,15 @@ try:
             'reserved_total':1,'double_allocations':0,'negative_stock':False,'observed_lock_waiters':waiters,
             'sales_confirmation':'authorized synthetic setup before reservation'}
 finally:
+    scenario_failed=sys.exc_info()[0] is not None
+    cleanup_failed=False
     for sid in sessions:
-        root.session_store.delete(root.session_store.get(sid))
+        try:
+            root.session_store.delete(root.session_store.get(sid))
+        except Exception:
+            cleanup_failed=True
+            print('SPH_SESSION_CLEANUP_FAILURE: Flow A',file=sys.stderr,flush=True)
+    if cleanup_failed and not scenario_failed:
+        raise RuntimeError('Flow A session cleanup failed')
 result['sessions_cleaned']=True
 print('SPH_FLOW_A_RESULT '+json.dumps(result),flush=True)
