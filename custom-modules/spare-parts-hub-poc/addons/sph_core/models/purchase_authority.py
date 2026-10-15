@@ -2,7 +2,7 @@ import hashlib
 import json
 from odoo import api, fields, models
 from odoo.exceptions import AccessError
-from .authority import approver, audit
+from .authority import approver, audit, preparing_draft
 
 
 class PurchaseAuthority(models.Model):
@@ -22,6 +22,7 @@ class PurchaseAuthority(models.Model):
     def create(self, values_list):
         for values in values_list:
             if values.get('state','draft') != 'draft' or any(key in values for key in ('sph_maker_uid','sph_review_digest','sph_reviewer_uid')):
+                audit(self,'po.create','deny')
                 raise AccessError('Unavailable')
             values['sph_maker_uid']=self.env.uid
         return super().create(values_list)
@@ -35,8 +36,9 @@ class PurchaseAuthority(models.Model):
         product=self.env['product.product'].sudo().browse(product_id).exists()
         if not supplier or not supplier.sph_fixture or not supplier.supplier_rank or not product or not product.sph_fixture or quantity<=0:
             raise AccessError('Unavailable')
-        order=self.sudo().create({'partner_id':supplier.id,'order_line':[(0,0,{
-            'product_id':product.id,'product_qty':quantity,'price_unit':101})]})
+        with preparing_draft():
+            order=self.sudo().create({'partner_id':supplier.id,'order_line':[(0,0,{
+                'product_id':product.id,'product_qty':quantity,'price_unit':101})]})
         return order.id
 
     def sph_draft(self, quantity=None):
@@ -91,7 +93,8 @@ class PurchaseAuthority(models.Model):
             audit(self,'po.identity','deny');raise AccessError('Unavailable')
         if {'sph_review_digest','sph_reviewer_uid'} & values.keys():
             approver(self,'po.review',maker=True)
-            if not self.env.su: raise AccessError('Unavailable')
+            if not self.env.su:
+                audit(self,'po.identity','deny');raise AccessError('Unavailable')
         if values.get('state') in ('purchase','done') or 'date_approve' in values:
             self._sph_check_review()
         if self.env.user.has_group('sph_core.group_sph_bot') and (

@@ -5,6 +5,16 @@ from odoo import api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError
 from odoo.tools import config
 
+_DRAFT = ContextVar('sph_preparing_draft', default=False)
+
+
+@contextmanager
+def preparing_draft():
+    token=_DRAFT.set(True)
+    try: yield
+    finally: _DRAFT.reset(token)
+
+
 _INTERNAL = ContextVar('sph_internal_stock', default=False)
 
 
