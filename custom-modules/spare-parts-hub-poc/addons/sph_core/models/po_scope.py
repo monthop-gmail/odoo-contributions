@@ -54,7 +54,8 @@ class PurchaseScope(models.Model):
         if 'sph_center_id' in values:return self._sph_po_deny('po.owner')
         # Scope before outer bundle/role guards can inspect or audit any record.
         if 'locked' in values:self._sph_po_scope(action='purchase.order.locked')
-        if 'sph_incident_ref' in values:self._sph_po_scope(action='incident.reference')
+        elif 'sph_incident_ref' in values:self._sph_po_scope(action='incident.reference')
+        elif not self.env.su:self._sph_po_scope(action='po.write')
         return super().write(values)
 
     def check_access(self,operation):

@@ -121,6 +121,7 @@ class TestPOCenterScope(TransactionCase):
             'confirm':lambda:record.button_confirm(),
             'approve':lambda:record.button_approve(force=True),
             'state':lambda:record.write({'state':'purchase'}),
+            'ordinary_write':lambda:record.write({'notes':'FIXTURE unauthorized edit'}),
             'date':lambda:record.write({'date_approve':False}),
             'identity':lambda:record.write({'sph_reviewer_uid':record.env.uid}),
             'rfq':lambda:record.action_rfq_send(),
