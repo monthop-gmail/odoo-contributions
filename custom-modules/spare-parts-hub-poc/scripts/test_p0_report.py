@@ -1,5 +1,4 @@
 """P0 evidence must fail closed on skipped cases, stale upgrades or duplicate rules."""
-import copy
 from pathlib import Path
 import tempfile
 import unittest

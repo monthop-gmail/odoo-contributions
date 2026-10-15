@@ -55,6 +55,10 @@ def execute(directory=None):
         report['bound']={'status':'PASS','executed_bindings':len(expected)}
         report['checks']=case_statuses(directory/'live-suite.xml')
         if set(report['checks'].values())!={'PASS'}:raise ValueError('A live case did not pass')
+        fresh=load('Fresh-live-start.json')
+        if fresh['commit']!=commit or fresh['companies']!=1 or any(fresh[key]!=0 for key in ('sales','purchases','reservations')):
+            raise ValueError('Live suite did not start clean')
+        report['fresh_live_start']=fresh
         manifest=load('manifest.json')
         if manifest['commit']!=commit:raise ValueError('Stale live manifest')
         sources={key:load('Flow-'+key+'-results.json') for key in ('A','B')}

@@ -66,8 +66,11 @@ def run_suite(junit_path=JUNIT):
 
 
 if __name__=='__main__':
-    code=run_suite()
+    code=1
     try:
+        from rehearsal_start import capture
+        capture()
+        code=run_suite()
         if code==0:
             from dashboard import execute
             execute()
