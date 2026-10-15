@@ -263,3 +263,19 @@ class TestPurchaseAuthority(TransactionCase):
 
     def test_approver_po_write_locked(self):
         self.lock_allowed('po','write',{'locked':True})
+
+    def test_approver_so_locked_bundle_denied(self):
+        record=self.fx['so']
+        before=record.partner_id
+        with self.assertRaisesRegex(AccessError,'^Unavailable$'):
+            record.with_user(self.fx['approver']).write({'locked':True,'partner_id':self.fx['supplier'].id})
+        self.assertFalse(record.locked)
+        self.assertEqual(record.partner_id,before)
+
+    def test_approver_po_locked_bundle_denied(self):
+        record=self.fx['po']
+        before=record.partner_id
+        with self.assertRaisesRegex(AccessError,'^Unavailable$'):
+            record.with_user(self.fx['approver']).write({'locked':True,'partner_id':self.fx['supplier'].id})
+        self.assertFalse(record.locked)
+        self.assertEqual(record.partner_id,before)

@@ -63,7 +63,7 @@ class Order(models.Model):
         if user.has_group('sph_core.group_sph_bot') or not (
             user.has_group('sph_core.group_sph_hub_operator') or
             user.has_group('sph_core.group_sph_warehouse_picker')):
-            raise AccessError('Unavailable')
+            raise UserError('Unavailable')
         try:
             self.check_access('read')
             if not self.exists():

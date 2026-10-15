@@ -75,5 +75,7 @@
   "TestPurchaseAuthority.test_bot_po_write_locked",
   "TestPurchaseAuthority.test_approver_po_write_locked",
   "TestSPHFixtures.test_native_actor_seed_rejects_demo_pilot",
-  "TestAtomicReservation.test_reserve_exact_location_ignores_child_stock"
+  "TestAtomicReservation.test_reserve_exact_location_ignores_child_stock",
+  "TestPurchaseAuthority.test_approver_so_locked_bundle_denied",
+  "TestPurchaseAuthority.test_approver_po_locked_bundle_denied"
 ]

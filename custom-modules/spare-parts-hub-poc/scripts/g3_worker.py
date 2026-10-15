@@ -112,6 +112,10 @@ for key,methods in (('so',('action_lock','action_unlock')),('po',('button_lock',
     with env.registry.cursor() as cursor:
         assert not api.Environment(cursor,SUPERUSER_ID,{})[fx[key]._name].browse(fx[key].id).locked
 
+response=rpc('bot',fx['so'],'sph_reserve',['FIXTURE bot role denied'])
+assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+assert response['error']['data']['name']=='odoo.exceptions.UserError'
+
 # The native-style approval refusal is tested by committed state, not exception.
 assert 'result' in rpc('bot',fx['po'],'button_approve',[],{'force':True})
 with env.registry.cursor() as cursor:

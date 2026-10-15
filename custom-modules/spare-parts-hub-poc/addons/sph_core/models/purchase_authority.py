@@ -106,6 +106,8 @@ class PurchaseAuthority(models.Model):
             approver(self,'po.review',maker=True)
             if not self.env.su:
                 audit(self,'po.identity','deny');raise AccessError('Unavailable')
+        # Odoo 19 uses boolean locked. Legacy invalid state=done stays denied
+        # defensively, rather than being a supported purchase transition.
         if values.get('state') in ('purchase','done') or 'date_approve' in values:
             self._sph_check_review()
             if not _TRANSITION.get():

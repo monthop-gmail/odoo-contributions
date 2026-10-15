@@ -15,6 +15,6 @@ Reviewer: monthop-gmail
 
 - `approver()` deliberately has no uid-1, sudo or cron exemption. Automated/admin
   callers must satisfy the actual active human approver role and maker/checker
-  checks; do not add a privileged bypass. PO purchase/done/date_approve writes
+  checks; do not add a privileged bypass. PO purchase/date_approve writes (legacy invalid done is defensively denied)
   require the private server transition capability entered by checked
   button_confirm/button_approve, never a client context flag.

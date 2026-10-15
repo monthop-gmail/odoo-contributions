@@ -23,7 +23,7 @@ class TestAtomicReservation(TransactionCase):
     def test_scope_and_ai_denial(self):
         order = self.order()
         for role in ('sph_bot','sph_center_requester','sph_purchasing_approver'):
-            with self.assertRaises(AccessError):
+            with self.assertRaisesRegex(UserError,'^Unavailable$'):
                 order.with_user(self.env.ref('sph_core.fixture_user_'+role)).sph_reserve('FIXTURE denied')
 
     def test_reserve_readback(self):

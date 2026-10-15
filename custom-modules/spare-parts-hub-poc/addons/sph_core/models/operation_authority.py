@@ -36,6 +36,8 @@ def locked_write(records, values, parent):
     if records.env.user.has_group('sph_core.group_sph_bot'):
         audit(records,action,'deny');raise AccessError('Unavailable')
     if records.env.user.has_group('sph_core.group_sph_purchasing_approver'):
+        if set(values) != {'locked'}:
+            audit(records,action+'.bundle','deny');raise AccessError('Unavailable')
         approver(records,action)
         result=price_write(records.sudo(),values,parent)
         audit(records,action,'allow')
