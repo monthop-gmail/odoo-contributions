@@ -80,5 +80,17 @@
   "TestPurchaseAuthority.test_approver_po_locked_bundle_denied",
   "TestSPHFixtures.test_flow_a_seed_last_unit_and_roles",
   "TestSPHFixtures.test_flow_a_seed_rejects_multiple_companies",
-  "TestSPHFixtures.test_flow_b_seed_shortage_and_authority"
+  "TestSPHFixtures.test_flow_b_seed_shortage_and_authority",
+  "TestPurchaseAuthority.test_incident_so_field",
+  "TestPurchaseAuthority.test_incident_so_human_allowed",
+  "TestPurchaseAuthority.test_incident_so_bot_denied",
+  "TestPurchaseAuthority.test_incident_so_bundle_denied",
+  "TestPurchaseAuthority.test_incident_so_create_denied",
+  "TestPurchaseAuthority.test_incident_po_field",
+  "TestPurchaseAuthority.test_incident_po_human_allowed",
+  "TestPurchaseAuthority.test_incident_po_bot_denied",
+  "TestPurchaseAuthority.test_incident_po_bundle_denied",
+  "TestPurchaseAuthority.test_incident_po_create_denied",
+  "TestPurchaseAuthority.test_incident_scope_and_clear",
+  "TestPurchaseAuthority.test_incident_rejects_urls_and_free_text"
 ]

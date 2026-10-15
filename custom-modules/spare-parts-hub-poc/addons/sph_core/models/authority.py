@@ -44,7 +44,8 @@ def audit(records, action, outcome, before_state=None):
         digest=current._sph_digest() if current._name=='purchase.order' else False
         values.append({'res_model':records._name,'res_id':record.id,'actor_uid':records.env.uid,
             'actor_kind':kind,'action':action,'outcome':outcome,'revision_digest':digest,
-            'before_state':before_state if before_state is not None else state,'after_state':state})
+            'before_state':before_state if before_state is not None else state,'after_state':state,
+            'incident_ref':current.sph_incident_ref if 'sph_incident_ref' in current._fields else False})
     if not values:
         values=[{'res_model':records._name,'res_id':0,'actor_uid':records.env.uid,'action':action,'outcome':outcome,'actor_kind':kind}]
     if outcome == 'deny':
@@ -82,6 +83,7 @@ class AuthorityAudit(models.Model):
     res_id=fields.Integer(required=True)
     actor_uid=fields.Integer(required=True)
     actor_kind=fields.Selection([('bot','Bot'),('human','Human')],required=True)
+    incident_ref=fields.Char(size=128)
     revision_digest=fields.Char()
     before_state=fields.Char()
     after_state=fields.Char()

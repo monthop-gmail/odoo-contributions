@@ -293,3 +293,63 @@ class TestPurchaseAuthority(TransactionCase):
                 raise
         self.assertFalse(record.locked)
         self.assertEqual(record.partner_id,before)
+
+    def test_incident_so_field(self):
+        self.assertEqual(self.env['sale.order']._fields['sph_incident_ref'].type,'char')
+        self.assertFalse(self.env['sale.order']._fields['sph_incident_ref'].copy)
+
+    def test_incident_so_human_allowed(self):
+        self.allow('so','write',{'sph_incident_ref':'fixture:incident:001'})
+        self.assertEqual(self.fx['so'].sph_incident_ref,'fixture:incident:001')
+        self.assertTrue(self.env['sph.authority.audit'].search_count([('res_model','=','sale.order'),('res_id','=',self.fx['so'].id),('action','=','incident.reference'),('outcome','=','allow'),('incident_ref','=','fixture:incident:001')]))
+
+    def test_incident_so_bot_denied(self):
+        self.deny('so','write',{'sph_incident_ref':'fixture:incident:bot'})
+        self.assertFalse(self.fx['so'].sph_incident_ref)
+
+    def test_incident_so_bundle_denied(self):
+        with self.assertRaisesRegex(AccessError,'^Unavailable$'):
+            self.fx['so'].with_user(self.fx['approver']).write({'sph_incident_ref':'fixture:incident:001','partner_id':self.fx['supplier'].id})
+        self.assertFalse(self.fx['so'].sph_incident_ref)
+
+    def test_incident_so_create_denied(self):
+        with self.assertRaisesRegex(AccessError,'^Unavailable$'):
+            self.env['sale.order'].with_user(self.fx['bot']).create({'partner_id':self.fx['supplier'].id,'sph_incident_ref':'fixture:incident:bot'})
+
+    def test_incident_po_field(self):
+        self.assertEqual(self.env['purchase.order']._fields['sph_incident_ref'].type,'char')
+        self.assertFalse(self.env['purchase.order']._fields['sph_incident_ref'].copy)
+
+    def test_incident_po_human_allowed(self):
+        self.allow('po','write',{'sph_incident_ref':'fixture:incident:001'})
+        self.assertEqual(self.fx['po'].sph_incident_ref,'fixture:incident:001')
+        self.assertTrue(self.env['sph.authority.audit'].search_count([('res_model','=','purchase.order'),('res_id','=',self.fx['po'].id),('action','=','incident.reference'),('outcome','=','allow'),('incident_ref','=','fixture:incident:001')]))
+
+    def test_incident_po_bot_denied(self):
+        self.deny('po','write',{'sph_incident_ref':'fixture:incident:bot'})
+        self.assertFalse(self.fx['po'].sph_incident_ref)
+
+    def test_incident_po_bundle_denied(self):
+        with self.assertRaisesRegex(AccessError,'^Unavailable$'):
+            self.fx['po'].with_user(self.fx['approver']).write({'sph_incident_ref':'fixture:incident:001','partner_id':self.fx['supplier'].id})
+        self.assertFalse(self.fx['po'].sph_incident_ref)
+
+    def test_incident_po_create_denied(self):
+        with self.assertRaisesRegex(AccessError,'^Unavailable$'):
+            self.env['purchase.order'].with_user(self.fx['bot']).create({'partner_id':self.fx['supplier'].id,'sph_incident_ref':'fixture:incident:bot'})
+
+    def test_incident_scope_and_clear(self):
+        self.allow('so','write',{'sph_incident_ref':'fixture:incident:clear'})
+        self.allow('so','write',{'sph_incident_ref':False})
+        self.assertFalse(self.fx['so'].sph_incident_ref)
+        self.fx['approver'].sph_center_ids=[Command.set(self.env.ref('sph_core.fixture_center_shared_b').ids)]
+        with self.assertRaisesRegex(AccessError,'^Unavailable$'):
+            self.fx['so'].with_user(self.fx['approver']).write({'sph_incident_ref':'fixture:incident:foreign'})
+        self.assertFalse(self.fx['so'].sph_incident_ref)
+
+    def test_incident_rejects_urls_and_free_text(self):
+        from odoo.exceptions import UserError
+        for value in ('https://invalid.example/incident','FIXTURE incident text','x'*129):
+            with self.assertRaisesRegex(UserError,'^Unavailable$'):
+                self.fx['po'].with_user(self.fx['approver']).write({'sph_incident_ref':value})
+        self.assertFalse(self.fx['po'].sph_incident_ref)
