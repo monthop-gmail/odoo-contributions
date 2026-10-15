@@ -447,3 +447,30 @@ B6e stockout reporting reads durable `sale.reserve.stockout` audit rows from fre
 cursors, retains exact UserError/Unavailable checks, and validates audit provenance
 in the dashboard. G3 additionally observes durable SO/PO `.locked.bundle` rows
 after failed RPC rollback; no new business-method commit is introduced.
+
+
+### P0 rehearsal evidence (B8-P0)
+
+The existing CI live-suite command now additionally installs B7c commit
+`631cd523d014595411b7726b09a6a5eae8175fd8` in an isolated Compose project, upgrades
+that same `sph_poc` database to the checkout tip, and always removes that project's
+containers/volumes. It fetches the public previous commit read-only if checkout
+is shallow; no credentials or workflow permission changes are needed.
+
+`python3 scripts/harness.py up` then `python3 scripts/live_suite.py` runs G1–G3,
+full Flow A/B (each CLI wipes/rebuilds its own disposable epoch and tears down),
+the upgrade check, and writes `evidence/P0-report.json`, `.md`, and `.sha256` into
+`sph-harness-evidence`. Always finish with `python3 scripts/harness.py down` (CI
+already has an always-teardown step). These commands destroy this checkout's
+**disposable** harness data and must never target another database.
+
+The consolidated report revalidates bound execution, live cases, same-tip clean
+Flow A/B snapshots, measured dashboard values, durable G3 counts and upgrade
+identity/grant assertions. It includes per-evidence-file/content-manifest hashes
+and the reviewed base artifact digest. The upload archive digest exists only
+after upload; it is recorded in the final hub post, avoiding a circular self-hash.
+Missing/stale/failed/skipped evidence makes the report/job fail.
+
+DN-B8-1 remains **owner-decision-needed-before-P1**: picking ownership and native
+warehouse narrowing are unchanged. This is synthetic P0 evidence, not pilot
+sign-off, staging or deployment authorization.

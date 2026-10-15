@@ -67,7 +67,15 @@ def run_suite(junit_path=JUNIT):
 
 if __name__=='__main__':
     code=run_suite()
-    if code==0:
-        from dashboard import execute
-        execute()
+    try:
+        if code==0:
+            from dashboard import execute
+            execute()
+            from upgrade_path import execute as upgrade
+            upgrade()
+    except Exception as error:
+        print('P0 upgrade/dashboard: FAIL ('+type(error).__name__+')')
+        code=1
+    from p0_report import execute as report
+    if report()['status']!='PASS':code=1
     raise SystemExit(code)
