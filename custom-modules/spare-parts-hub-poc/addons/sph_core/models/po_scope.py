@@ -1,6 +1,6 @@
 """PO ownership gate; no empty-membership fallthrough or native ACL grant."""
 from odoo import api, fields, models
-from odoo.exceptions import AccessError, MissingError
+from odoo.exceptions import AccessError, MissingError, UserError
 from .authority import audit
 
 CENTER_CONTEXT={'sph_center_id','center_id','default_sph_center_id','default_center_id'}
@@ -69,4 +69,4 @@ class PurchaseScope(models.Model):
         if self.env.su:return super().export_data(*args,**kwargs)
         self._sph_po_scope()
         try:return super().export_data(*args,**kwargs)
-        except (AccessError,MissingError):return self._sph_po_deny('po.export')
+        except (UserError,MissingError):return self._sph_po_deny('po.export')

@@ -17,7 +17,8 @@ class TestPOCenterScope(TransactionCase):
             user=self.env['res.users'].with_context(no_reset_password=True).create({
                 'name':'FIXTURE PO reviewer '+str(index),'login':'fixture_po_reviewer_'+str(index),
                 'group_ids':[Command.set([self.env.ref('sph_core.group_sph_purchasing_approver').id,
-                    self.env.ref('purchase.group_purchase_user').id])],
+                    self.env.ref('purchase.group_purchase_user').id,
+                    self.env.ref('base.group_allow_export').id])],
                 'sph_center_ids':[Command.set(center.ids)]})
             bot=self.env['res.users'].with_context(no_reset_password=True).create({
                 'name':'FIXTURE PO bot '+str(index),'login':'fixture_po_bot_'+str(index),
