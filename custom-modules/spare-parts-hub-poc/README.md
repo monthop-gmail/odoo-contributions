@@ -248,3 +248,26 @@ claiming the order confirmation itself was part of reservation.
 Pre-G4 review #53/#55 F1/F2/P3 scheduling, native-actor/coverage, retry evidence,
 location coverage and labeling items remain separate follow-up work. This F3
 change does not claim those findings are closed or approve G4.
+
+## B5a: discount and pricelist authority
+
+Live baseline probe at `4546b2e` reproduced both missing boundaries: the existing
+G1 group-union `sph_bot` (Sales manager, scoped to its own center) committed an SO
+line discount and a switch to another own-center pricelist. The probe added no
+group grants. See hub finding `dis-d3424628#65` and CI run `38673539533`; only
+probe scripts changed before that observation. This does not imply that the
+minimal bot ACL alone grants native Sales writes. All probe records are FIXTURE.
+
+Price authority now covers `price_unit`, `discount`, and `pricelist_id` wherever
+applicable: SO/PO line creates/writes and SO pricelist writes. The bot is denied
+even with the broader native Sales fixture permissions. The dedicated approver
+can perform the protected changes with an allow audit in the same transaction;
+no native groups/ACLs are granted by this fix. Existing server-only PO draft
+preparation retains its bounded private creation capability.
+
+Six additional bound model tests cover SO/PO discount and SO pricelist deny/allow
+paths. The live G3 matrix includes all three paths. The same own-center HTTP probe
+now requires `Unavailable`, unchanged committed values and durable SPH deny-audit
+rows, so a missing ACL, foreign-center denial or expired session cannot stand in
+for the authority guard. Sanitized results are in `B5a-price-probe.json`.
+B5b/B5c/B5d and G4 remain separate queued work; this closes only F-G3-2.

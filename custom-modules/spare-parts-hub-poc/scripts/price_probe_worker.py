@@ -38,11 +38,16 @@ for record,field,value in ((line,'discount',7),(order,'pricelist_id',alternate.i
         stored=observer[record._name].browse(record.id)[field]
         stored=stored.id if hasattr(stored,'id') else stored
         changed=stored==value
+        audited=bool(observer['sph.authority.audit'].search_count([('res_model','=',record._name),
+            ('res_id','=',record.id),('actor_uid','=',bot.id),('action','=',record._name+'.'+field),('outcome','=','deny')]))
     outcome='SUCCEEDED' if changed and 'error' not in response else 'DENIED'
     rows.append({'model':record._name,'field':field,'outcome':outcome,'committed_target_value':changed,
-        'error_type':response.get('error',{}).get('data',{}).get('name')})
+        'error_type':response.get('error',{}).get('data',{}).get('name'),
+        'authority_deny_audit':audited})
+    if globals().get('require_denied'):
+        assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
 if globals().get('require_denied'):
-    assert all(row['outcome']=='DENIED' and not row['committed_target_value'] for row in rows)
+    assert all(row['outcome']=='DENIED' and not row['committed_target_value'] and row['authority_deny_audit'] for row in rows)
 print('SPH_PRICE_PROBE '+json.dumps({'phase':'guarded' if globals().get('require_denied') else 'unpatched',
     'principal':'FIXTURE sph_bot','existing_sales_manager_union':True,'scope':'own center; own-center alternate pricelist',
     'results':rows}),flush=True)
