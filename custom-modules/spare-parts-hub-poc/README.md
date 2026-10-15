@@ -198,3 +198,32 @@ quants, winning moves/ledger, loser rollback and replay. `manifest.json` records
 round count, actual transaction isolation, commit and pinned runtime; G2 request
 statistics and lock witness logs stay in the synthetic evidence bundle.
 G2 acceptance requires the real race on the exact commit. G3 and G4 remain pending.
+
+## B4d human authority and audit
+
+Purchase approval requires the dedicated non-bot approver, a different maker,
+`two_step`/amount zero, and that approver's review digest matching the current
+synthetic PO. Client actor/force/context values do not grant authority. Bot
+`button_approve` is a silent refusal with unchanged state; confirm, direct purchase
+state writes and RFQ-send paths deny. The bot can prepare/read/edit its own draft
+through bounded methods, without new native ACL/group grants. Protected identity
+fields cannot be forged by RPC. Harness superuser initialization stays trusted.
+
+SO/PO price changes, scrap validation, inventory apply and direct quant writes
+each have distinct bot-deny/approver-allow tests. Native stock operations use a
+private Python ContextVar capability, never a client context flag, so G2 human
+reservation/assignment remains possible without opening direct bot writes.
+
+`sph.authority.audit` stores `res_model`, `res_id` and actor as plain values;
+resource identifiers have no foreign keys. Denials commit via an independent
+cursor so a failed HTTP request cannot roll them back. The server's test-enable
+configuration suppresses that independent write only in the in-process test
+harness; client context cannot change it. Unit tests use their result/log as deny
+evidence. ONLY the committed out-of-process G3 suite asserts deny rows. Allow
+rows share the action transaction, with a rollback test. Audit read access is
+admin-only; no audit create/write permission is granted to bot/approver roles.
+
+The live suite runs G1, G2, then G3; G3 emits sanitized
+`G3-authority-results.json` and `G3-assertions.xml`. No session/share tokens enter
+these outputs. A green exact-commit live stage is required for G3 evidence.
+This does not finish Flow A+B integration or reviewer/owner G4 sign-off.

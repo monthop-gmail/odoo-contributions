@@ -8,6 +8,8 @@ from odoo.addons.sph_core.tests.test_purchase_authority import prepare
 assert env.cr.dbname=='sph_poc'
 assert env.company.po_double_validation=='two_step' and env.company.po_double_validation_amount==0
 fx=prepare(env)
+maker_id=env['purchase.order'].with_user(fx['approver']).sph_prepare(fx['supplier'].id,fx['product'].id)
+fx['maker_po']=env['purchase.order'].browse(maker_id)
 sessions={}
 for role in ('bot','approver'):
     user=fx[role];session=root.session_store.new()
@@ -76,6 +78,10 @@ with env.registry.cursor() as cursor:
     assert po.state=='purchase' and po.sph_maker_uid==fx['bot'].id
     assert observer['stock.scrap'].browse(fx['scrap'].id).state=='done'
 # Independently committed deny rows remain visible after failed RPC rollback.
+response=rpc('approver',fx['maker_po'],'sph_review')
+assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+observed(fx['maker_po'],'approver','po.review','deny')
 print('SPH_G3_RESULT '+json.dumps({'matrix':rows,'deny_rows_observed':sum(r['outcome']=='deny' for r in rows),
     'allow_rows_observed':sum(r['outcome']=='allow' for r in rows),'po_state':'purchase',
     'maker_checker_distinct':True,'settings':{'validation':'two_step','amount':0}}),flush=True)
+
