@@ -99,6 +99,34 @@ def execute(env,fx,rpc,audit_count,observed,rows,sessions):
     observed(orders[0],'bot','po.approve','deny',before);rows[-1]['path']='b7b_bot_hub_silent_approve'
     assert snapshot()[0][0]=='draft'
     fx['bot'].group_ids=[(6,0,original_groups)]
+    picking_grant=env.ref('sph_core.group_sph_picking_hub')
+    assert not fx['bot'].has_group('sph_core.group_sph_picking_hub')
+    fx['bot'].group_ids=[(4,env.ref(xmlid).id) for xmlid in (
+        'sph_core.group_sph_picking_hub','sph_core.group_sph_purchasing_approver',
+        'purchase.group_purchase_manager','stock.group_stock_manager')]
+    sync()
+    assert not fx['bot'].has_group('sph_core.group_sph_po_hub')
+    target=orders[1]
+    assert fx['bot'].sph_center_ids==target.sph_center_id
+    target.with_user(fx['bot']).check_access('read')
+    unchanged=snapshot()
+    for method,args,action in (('sph_review',[],'po.review'),
+            ('button_confirm',[],'po.approve'),('action_rfq_send',[],'po.send'),
+            ('write',[{'state':'purchase'}],'po.approve'),
+            ('write',[{'sph_incident_ref':'fixture:bot:picking-grant'}],'incident.reference'),
+            ('write',[{'locked':True}],'purchase.order.locked')):
+        before=audit_count(target,'bot',action,'deny')
+        response=rpc('bot',target,method,args)
+        assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
+        observed(target,'bot',action,'deny',before)
+        rows[-1]['path']='b8_bot_picking_grant_'+method+('_'+next(iter(args[0])) if args else '')
+        assert snapshot()==unchanged
+    before=audit_count(target,'bot','po.approve','deny')
+    response=rpc('bot',target,'button_approve',[],{'force':True});assert 'error' not in response
+    observed(target,'bot','po.approve','deny',before);rows[-1]['path']='b8_bot_picking_grant_silent_approve'
+    assert snapshot()==unchanged
+    fx['bot'].group_ids=[(6,0,original_groups)]
     for role in original:fx[role].sph_center_ids=[(6,0,original[role])]
     sync()
     assert not env['res.users'].search_count([('group_ids','in',grant.id)])
+    assert not env['res.users'].search_count([('group_ids','in',picking_grant.id)])
