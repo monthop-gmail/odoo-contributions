@@ -136,3 +136,20 @@ class TestAtomicReservation(TransactionCase):
         missing=self.env['sale.order'].browse(2147483647)
         with self.assertRaisesRegex(UserError,'^Unavailable$'):
             missing.with_user(actor).sph_reserve('FIXTURE missing')
+
+    def test_reserve_exact_location_ignores_child_stock(self):
+        order=self.order()
+        product=order.order_line.product_id
+        root=self.env.ref('sph_core.fixture_wh_central').lot_stock_id
+        child=self.env['stock.location'].create({'name':'FIXTURE child stock excluded',
+            'location_id':root.id,'usage':'internal'})
+        self.env['stock.quant']._update_available_quantity(product,root,-1)
+        self.env['stock.quant']._update_available_quantity(product,child,1)
+        quants=self.env['stock.quant'].search([('product_id','=',product.id),('location_id','child_of',root.id)])
+        self.assertEqual(sum(quants.filtered(lambda q:q.location_id==root).mapped('quantity')),0)
+        self.assertEqual(sum(quants.filtered(lambda q:q.location_id==child).mapped('quantity')),1)
+        with self.assertRaisesRegex(UserError,'^Unavailable$'):
+            self.reserve(order,'FIXTURE exact location only')
+        self.assertFalse(order.sph_reservation_ids)
+        self.assertFalse(any(order.picking_ids.move_ids.mapped('quantity')))
+        self.assertFalse(any(quants.mapped('reserved_quantity')))

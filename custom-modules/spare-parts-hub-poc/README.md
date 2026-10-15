@@ -335,3 +335,5 @@ it requires the explicit `disposable-test-harness` profile and the dedicated
 `sph_poc` database. Missing, demo and pilot profiles fail before any seed writes.
 The native stock-manager actor must never be reused in a demo/pilot seed; no such
 seed is supplied here. A future demo seed must be separate and omit this actor.
+
+M5 pins exact central `lot_stock_id` availability with child-only stock denied; S2 `child_of` support remains out of scope.

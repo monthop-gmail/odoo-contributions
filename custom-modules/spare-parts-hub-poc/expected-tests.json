@@ -74,5 +74,6 @@
   "TestPurchaseAuthority.test_approver_po_button_unlock_locked",
   "TestPurchaseAuthority.test_bot_po_write_locked",
   "TestPurchaseAuthority.test_approver_po_write_locked",
-  "TestSPHFixtures.test_native_actor_seed_rejects_demo_pilot"
+  "TestSPHFixtures.test_native_actor_seed_rejects_demo_pilot",
+  "TestAtomicReservation.test_reserve_exact_location_ignores_child_stock"
 ]
