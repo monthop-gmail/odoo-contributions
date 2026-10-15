@@ -102,3 +102,15 @@ class POBinaryScope(models.AbstractModel):
                 self.env['purchase.order'].browse(attachment.res_id)._sph_po_scope(action='po.binary')
         return super()._find_record(xmlid=xmlid,res_model=res_model,res_id=res_id,
             access_token=access_token,field=field)
+
+
+class POProjectionUsers(models.Model):
+    _inherit='res.users'
+
+    def write(self,values):
+        result=super().write(values)
+        if {'sph_center_ids','group_ids','company_ids','company_id'} & values.keys():
+            # A field cache must not retain visibility after membership/grant revoke.
+            for name in ('mail.message','ir.attachment'):
+                self.env[name].invalidate_model(['sph_po_visible'])
+        return result

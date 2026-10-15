@@ -127,6 +127,7 @@ class TestPOCenterScope(TransactionCase):
             'digest':lambda:record._sph_digest(),
             'incident':lambda:record.write({'sph_incident_ref':'fixture:scope'}),
             'locked':lambda:record.write({'locked':True}),
+            'locked_bundle':lambda:record.write({'locked':True,'notes':'FIXTURE scope bundle'}),
         }
 
     def deny_matrix(self,record):
@@ -172,6 +173,7 @@ class TestPOCenterScope(TransactionCase):
             self.assertTrue(human.sph_review())
             self.assertEqual(human._sph_digest(),po.sph_review_digest)
             self.assertTrue(human.action_rfq_send())
+            self.assertTrue(human._approval_allowed())
             human.write({'sph_incident_ref':'fixture:own'})
             human.write({'locked':True});human.write({'locked':False})
             human.button_confirm()

@@ -52,6 +52,9 @@ class PurchaseScope(models.Model):
 
     def write(self,values):
         if 'sph_center_id' in values:return self._sph_po_deny('po.owner')
+        # Scope before outer bundle/role guards can inspect or audit any record.
+        if 'locked' in values:self._sph_po_scope(action='purchase.order.locked')
+        if 'sph_incident_ref' in values:self._sph_po_scope(action='incident.reference')
         return super().write(values)
 
     def read(self,*args,**kwargs):
