@@ -57,6 +57,12 @@ class PurchaseScope(models.Model):
         if 'sph_incident_ref' in values:self._sph_po_scope(action='incident.reference')
         return super().write(values)
 
+    def check_access(self,operation):
+        if self.env.su:return super().check_access(operation)
+        self._sph_po_scope(action='po.access')
+        try:return super().check_access(operation)
+        except (AccessError,MissingError):return self._sph_po_deny('po.access')
+
     def read(self,*args,**kwargs):
         if self.env.su:return super().read(*args,**kwargs)
         self._sph_po_scope()

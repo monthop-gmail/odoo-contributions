@@ -226,3 +226,28 @@ class TestPOCenterScope(TransactionCase):
         self.denied(lambda:binary._find_record(res_id=2147483647,access_token='fixture-po-test-token'))
         self.assertEqual(self.env['ir.binary'].with_user(self.users[1])._find_record(
             res_id=attachment.id,access_token='fixture-po-test-token').id,attachment.id)
+
+    def test_native_access_and_thread_checks_fail_closed(self):
+        for index,user in enumerate(self.users):
+            self.orders[index].with_user(user).check_access('read')
+            for po in (self.orders[1-index],self.env['purchase.order'].browse(2147483647)):
+                self.denied(lambda:po.with_user(user).check_access('read'))
+            user.sph_center_ids=[Command.clear()]
+            self.denied(lambda:self.orders[index].with_user(user).check_access('read'))
+
+    def test_link_projection_grant_revoke_cached_reads(self):
+        po=self.orders[1];user=self.users[0]
+        msg=self.env['mail.message'].create({'model':'purchase.order','res_id':po.id,
+            'body':'FIXTURE shared thread','message_type':'comment'})
+        attachment=self.env['ir.attachment'].create({'name':'FIXTURE shared attachment',
+            'raw':b'FIXTURE protected','res_model':'purchase.order','res_id':po.id})
+        for row in (msg,attachment):self.assertFalse(row.with_user(user).sph_po_visible)
+        grant=self.env.ref('sph_core.group_sph_po_hub')
+        user.group_ids=[Command.link(grant.id)]
+        for row in (msg,attachment):
+            self.assertTrue(row.with_user(user).sph_po_visible)
+            self.assertTrue(row.with_user(user).read(['id']))
+        user.group_ids=[Command.unlink(grant.id)]
+        for row in (msg,attachment):
+            self.assertFalse(row.with_user(user).sph_po_visible)
+            self.denied(lambda:row.with_user(user).read(['id']))

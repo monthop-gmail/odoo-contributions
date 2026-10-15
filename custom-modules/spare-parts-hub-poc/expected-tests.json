@@ -111,5 +111,7 @@
   "TestPOCenterScope.test_same_center_review_rfq_confirm_and_draft",
   "TestPOCenterScope.test_hub_grant_revoke_remaining_capabilities",
   "TestPOCenterScope.test_po_lines_mail_attachments_authorized_only",
-  "TestPOCenterScope.test_attachment_token_cannot_replace_center"
+  "TestPOCenterScope.test_attachment_token_cannot_replace_center",
+  "TestPOCenterScope.test_native_access_and_thread_checks_fail_closed",
+  "TestPOCenterScope.test_link_projection_grant_revoke_cached_reads"
 ]
