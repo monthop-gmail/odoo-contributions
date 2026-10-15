@@ -123,6 +123,20 @@ for key in ('so','po'):
         checked=api.Environment(cursor,SUPERUSER_ID,{})[record._name].browse(record.id)
         assert not checked.locked and checked.partner_id.id==record.partner_id.id
 
+# Opaque references are metadata only; bot deny and human allow use real HTTP.
+for key in ('so','po'):
+    value='fixture:incident:g3-'+key
+    deny(fx[key],'write','incident.reference',[{'sph_incident_ref':value}])
+    rows[-1]['path']=key
+    allow(fx[key],'write','incident.reference',[{'sph_incident_ref':value}])
+    rows[-1]['path']=key
+    with env.registry.cursor() as cursor:
+        observer=api.Environment(cursor,SUPERUSER_ID,{})
+        assert observer[fx[key]._name].browse(fx[key].id).sph_incident_ref==value
+        assert observer['sph.authority.audit'].search_count([('res_model','=',fx[key]._name),
+            ('res_id','=',fx[key].id),('actor_uid','=',fx['approver'].id),
+            ('action','=','incident.reference'),('outcome','=','allow'),('incident_ref','=',value)])
+
 response=rpc('bot',fx['so'],'sph_reserve',['FIXTURE bot role denied'])
 assert response.get('error',{}).get('data',{}).get('message')=='Unavailable'
 assert response['error']['data']['name']=='odoo.exceptions.UserError'

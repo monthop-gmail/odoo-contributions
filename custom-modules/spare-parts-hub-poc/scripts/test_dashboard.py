@@ -7,7 +7,7 @@ class TestDashboard(unittest.TestCase):
     def source(self,requested=2,reserved=1):
         return {'A':{'commit':'fixture-sha','measurements':{'existing_sales_before':0,
             'orders':[{'so_id':1,'state':'sale','requested_qty':requested,'reserved_qty':reserved}],
-            'stockout_so_ids':[1],'backorder_picking_ids':[]}}}
+            'stockout_so_ids':[1],'stockout_audits':[{'audit_id':1,'so_id':1,'action':'sale.reserve.stockout','outcome':'deny'}],'backorder_picking_ids':[]}}}
 
     def test_rejects_mixed_commit(self):
         with self.assertRaisesRegex(ValueError,'mixed commit'):
@@ -26,3 +26,8 @@ class TestDashboard(unittest.TestCase):
         data=calculate(self.source(),'fixture-sha')
         self.assertEqual(data['metrics']['open_blockers'],1)
         self.assertEqual(data['metrics']['backorders'],0)
+
+    def test_rejects_stockout_without_system_audit(self):
+        source=self.source();source['A']['measurements']['stockout_audits']=[]
+        with self.assertRaisesRegex(ValueError,'system audit provenance'):
+            calculate(source,'fixture-sha')

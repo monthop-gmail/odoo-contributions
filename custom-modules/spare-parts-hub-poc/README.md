@@ -430,3 +430,20 @@ SLA target is added. Open blockers means unfilled confirmed scenario orders; hub
 and pilot governance blockers are not measured. Dashboard failure fails CI after
 the separate five-case JUnit is written. The static live runner now invokes its
 unit-test entrypoint, including dashboard stale/unclean-input controls.
+
+### M2 SPH-side opaque incident references
+
+`sale.order.sph_incident_ref` and `purchase.order.sph_incident_ref` are optional
+opaque metadata. Existing human approvers may attach/replace/clear on readable
+orders using a single-field write; bot writes, bundles and nonempty create-time
+injection are denied. Existing record rules still govern reads. Reservations use
+the SO link via order_id, rather than copying an independent reference.
+Contract: [docs/incident-contract.md](docs/incident-contract.md). No external FK,
+HTTP/MCP/provider import, secret or runtime ai-collab/ai-war-room dependency exists.
+The counterpart/OD6 is not built. G3 exercises bot deny/human allow over real HTTP
+and checks the audit snapshot. No stock/price/purchase authority is implied.
+
+B6e stockout reporting reads durable `sale.reserve.stockout` audit rows from fresh
+cursors, retains exact UserError/Unavailable checks, and validates audit provenance
+in the dashboard. G3 additionally observes durable SO/PO `.locked.bundle` rows
+after failed RPC rollback; no new business-method commit is introduced.

@@ -25,6 +25,13 @@ def calculate(sources,commit):
             requested+=demand;reserved+=allocation
             if row['state']=='sale' and allocation<demand:
                 blockers.append({'scenario':scenario,'so_id':row['so_id'],'unfilled_qty':demand-allocation})
+        audit_orders=set()
+        for row in measured['stockout_audits']:
+            if row['audit_id']<=0 or row['action']!='sale.reserve.stockout' or row['outcome']!='deny':
+                raise ValueError('Invalid stockout audit provenance')
+            audit_orders.add(row['so_id'])
+        if audit_orders!=set(measured['stockout_so_ids']):
+            raise ValueError('Stockout IDs do not match system audit provenance')
         if not set(measured['stockout_so_ids'])<=known:
             raise ValueError('Stockout references an unknown scenario order')
         stockouts.extend({'scenario':scenario,'so_id':oid} for oid in set(measured['stockout_so_ids']))
