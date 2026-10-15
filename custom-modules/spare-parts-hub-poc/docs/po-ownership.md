@@ -14,7 +14,7 @@ memberships, independent of `_sph_scoped()`. Empty membership denies. The only
 all-center exception is `group_sph_po_hub`, with no implied native ACL/role and
 no seeded assignees. Visibility never grants native Purchase read/export or
 approval permission. Native-ACL positive/negative tests deliberately grant the
-existing Purchase-user group ONLY in rollback-only unit fixtures, so an ACL
+existing Purchase-user group and native export permission ONLY in rollback-only unit fixtures, so an ACL
 failure cannot mask a broken center rule. The live harness temporarily tests the
 hub exception using existing bounded incident metadata authority, revokes it,
 and verifies no assignees remain. No native Purchase ACL is added.
