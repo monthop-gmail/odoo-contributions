@@ -9,6 +9,7 @@ from dashboard import calculate
 from harness import ROOT
 from test_results import validate_test_log
 from upgrade_path import PREVIOUS
+from upgrade_evidence import upgrade_checks
 
 BASE='0e2f64e08a2c24b900c7c77f2d71231975298f50'
 BASE_ARTIFACT={'run_id':38796314664,'artifact_id':12002955569,
@@ -29,18 +30,39 @@ def case_statuses(path):
 def validate_upgrade(data,commit):
     if data['status']!='PASS' or data['previous_sha']!=PREVIOUS or data['final_sha']!=commit or data['teardown']!='PASS':
         raise ValueError('Upgrade incomplete or stale')
-    before,after=data['before'],data['after']
-    if (before['xmlid_count']!=1 or after['xmlid_count']!=1 or before['rule_id']!=after['rule_id'] or
-            before['all_picking_rule_ids']!=after['all_picking_rule_ids'] or
-            before['grant']!='group_sph_po_hub' or after['grant']!='group_sph_picking_hub' or
-            not after['grant_isolation_checked'] or not data['assertions'] or not all(data['assertions'].values())):
-        raise ValueError('Upgrade identity/grant assertions failed')
+    measured=upgrade_checks(data['before'],data['after'])
+    if data['assertions']!=measured or not all(measured.values()):
+        raise ValueError('Upgrade measured checks failed or reported flags disagree')
+
+
+def validate_live_evidence(g2,g3,baseline):
+    if baseline['schema_version']!=1:raise ValueError('Unknown evidence baseline schema')
+    matrix=g3['matrix']
+    if not matrix or not all(row['audit_seen'] is True for row in matrix):
+        raise ValueError('Missing durable audit observation')
+    if any(row['outcome'] not in ('deny','allow') for row in matrix):raise ValueError('Unknown G3 outcome')
+    counts={'deny':sum(row['outcome']=='deny' for row in matrix),
+        'allow':sum(row['outcome']=='allow' for row in matrix),'observations':len(matrix)}
+    if counts!=baseline['g3']:raise ValueError('G3 coverage differs from reviewed baseline')
+    if (counts['deny'],counts['allow'])!=(g3['deny_rows_observed'],g3['allow_rows_observed']):
+        raise ValueError('G3 counts disagree')
+    rounds=g2['round_count'];waits=g2['lock_wait_rounds']
+    if (g2['double_allocations']!=0 or rounds<baseline['g2']['min_rounds'] or
+            len(g2['rounds'])!=rounds or not baseline['g2']['min_lock_wait_rounds']<=waits<=rounds):
+        raise ValueError('G2 coverage/contention below reviewed baseline')
+    if sorted(row['round'] for row in g2['rounds'])!=list(range(rounds)) or any(
+            row['double_allocations']!=0 or row['negative_stock'] is not False for row in g2['rounds']):
+        raise ValueError('G2 rounds duplicate, missing or unsafe')
+    if sum(row['observed_lock_waiters']>=2 for row in g2['rounds'])!=waits:
+        raise ValueError('G2 contention summary differs from measured rounds')
+    return counts
 
 
 def execute(directory=None):
     directory=Path(directory or ROOT/'evidence');directory.mkdir(exist_ok=True)
     commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     report={'scope':'P0 SYNTHETIC CI/disposable rehearsal; NOT pilot-ready',
+        'upgrade_limit':'Empty-business-DB addon update; NOT a business-data migration',
         'base_sha':BASE,'final_tip_sha':commit,'status':'FAIL',
         'ci_run_url':'https://github.com/'+os.environ.get('GITHUB_REPOSITORY','monthop-gmail/odoo-contributions')+
             '/actions/runs/'+os.environ.get('GITHUB_RUN_ID','local'),
@@ -68,13 +90,10 @@ def execute(directory=None):
         report['dashboard']={'metrics':measured['metrics'],'units':measured['units'],
             'formulas':'docs/dashboard-formulas.md','definition':'Reserved/requested units; not delivered fill. Blockers = unfilled confirmed demo orders.'}
         report['fresh_epochs']={key:source['measurements']['existing_sales_before'] for key,source in sources.items()}
-        g3=load('G3-authority-results.json');matrix=g3['matrix']
-        if not matrix or not all(row['audit_seen'] for row in matrix):raise ValueError('Missing durable audit observation')
-        denies=sum(row['outcome']=='deny' for row in matrix);allows=sum(row['outcome']=='allow' for row in matrix)
-        if (denies,allows)!=(g3['deny_rows_observed'],g3['allow_rows_observed']):raise ValueError('G3 counts disagree')
-        report['g3']={'deny':denies,'allow':allows,'observations':len(matrix)}
-        report['g2']=load('G2-request-results.json')
-        if report['g2']['double_allocations']!=0:raise ValueError('Double allocation')
+        baseline=json.loads((ROOT/'p0-evidence-baseline.json').read_text())
+        report['evidence_baseline']=baseline
+        g3=load('G3-authority-results.json');report['g2']=load('G2-request-results.json')
+        report['g3']=validate_live_evidence(report['g2'],g3,baseline)
         report['upgrade']=load('Upgrade-results.json');validate_upgrade(report['upgrade'],commit)
         report['status']='PASS'
     except Exception as error:
@@ -93,6 +112,7 @@ def execute(directory=None):
     text+='| INFO-B8-2 upgrade | '+report.get('upgrade',{}).get('status','UNKNOWN')+' |\n\n'
     text+='Measured dashboard: `'+json.dumps(metrics,sort_keys=True)+'`. Units: `'+json.dumps(report.get('dashboard',{}).get('units',{}))+'`.\n\n'
     text+='G3: `'+json.dumps(report.get('g3',{}))+'`. Bound: `'+json.dumps(report.get('bound',{}))+'`.\n\n'
+    text+='INFO-B8P0-3: **NOT a business-data migration**. Empty-business-DB addon update only; no retained business transaction rows tested.\n\n'
     text+='Upgrade acceptance requires: previous B7c installed, same DB updated to final tip; exactly one XMLID, same rule ID, unchanged total picking-rule IDs, picking-only grant and post-upgrade isolation. See JSON/logs for the actual result; missing/failed checks do not pass.\n\n'
     text+='Evidence manifest SHA256: `'+report['artifact_digests']['evidence_manifest_sha256']+'`. Per-file/base-archive hashes in P0-report.json; report hash in P0-report.sha256. Final upload archive digest is recorded in hub after upload.\n\n'
     text+='DN-B8-1: **owner decision needed before P1**; global picking scope unchanged. INFO-B7b-4/5 remain backlog. Synthetic harness only; NOT pilot-ready. No staging/merge/deploy/spend/credentials/real data.\n'

@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "review-152-a4289f48",
+  "source_commit": "a4289f48bac47d7b8d3fb21773bca9afe1536d5a",
+  "source_ci_run": 38800887626,
+  "g3": {"deny": 140, "allow": 22, "observations": 162},
+  "g2": {"min_rounds": 4, "min_lock_wait_rounds": 1}
+}

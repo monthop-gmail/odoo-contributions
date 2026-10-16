@@ -6,6 +6,7 @@ import subprocess
 import tarfile
 import tempfile
 from harness import ROOT, PROJECT, ODOO_ARGS
+from upgrade_evidence import upgrade_checks
 
 PREVIOUS='631cd523d014595411b7726b09a6a5eae8175fd8'
 
@@ -14,7 +15,7 @@ def execute():
     evidence=ROOT/'evidence';evidence.mkdir(exist_ok=True)
     result={'status':'FAIL','previous_sha':PREVIOUS,
         'final_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
-        'scope':'SYNTHETIC disposable upgrade only; no deployment/migration approval'}
+        'scope':'SYNTHETIC empty-business-DB addon update; NOT a business-data migration'}
     try:
         if subprocess.run(['git','cat-file','-e',PREVIOUS+'^{commit}'],cwd=ROOT,
                 stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode:
@@ -62,11 +63,8 @@ def execute():
                 run(['run','--rm','--no-deps','odoo']+ODOO_ARGS+['--update=sph_core',
                     '--without-demo=all','--stop-after-init','--no-http'],'update-current')
                 result['after']=probe('after')
-                assert result['before']['rule_id']==result['after']['rule_id']
-                assert result['before']['all_picking_rule_ids']==result['after']['all_picking_rule_ids']
-                result['assertions']={'one_xmlid':True,'same_rule_id':True,
-                    'no_duplicate_picking_rules':True,'picking_not_po_grant':True,
-                    'no_seeded_grants':True,'post_upgrade_grant_isolation':True}
+                result['assertions']=upgrade_checks(result['before'],result['after'])
+                if not all(result['assertions'].values()):raise ValueError('Measured upgrade check failed')
             finally:
                 run(['down','--volumes','--remove-orphans'],'final-down')
                 result['teardown']='PASS'
