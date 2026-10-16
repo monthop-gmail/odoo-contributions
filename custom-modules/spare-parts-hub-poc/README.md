@@ -474,3 +474,19 @@ Missing/stale/failed/skipped evidence makes the report/job fail.
 DN-B8-1 remains **owner-decision-needed-before-P1**: picking ownership and native
 warehouse narrowing are unchanged. This is synthetic P0 evidence, not pilot
 sign-off, staging or deployment authorization.
+
+#### P0 report hardening (#152 / #161)
+
+Upgrade assertion fields now derive from raw probe measurements (XMLID/rule IDs,
+global/model fields, actual group/visibility counts and empty-business-row counts).
+The report recomputes those checks and rejects disagreement or any failed check.
+`p0-evidence-baseline.json` versions the reviewed G3 coverage (140 deny / 22 allow)
+and minimum G2 coverage/contention (4 rounds / at least 1 witnessed lock-wait round).
+A smaller internally consistent G3 matrix or zero contention cannot produce PASS.
+Intentional coverage changes require an explicit baseline update and review.
+
+INFO-B8P0-3: **NOT a business-data migration**. This is an empty-business-DB addon
+update with synthetic seed fixtures and rollback-only probe rows; it does not test
+retained transactional data migration or backfill. See the
+[DN-B upgrade/backfill impact proposal](docs/dn-b-proposal.md) for analysis only.
+DN-A remains fail-closed; picking rules, groups and access policy are unchanged.

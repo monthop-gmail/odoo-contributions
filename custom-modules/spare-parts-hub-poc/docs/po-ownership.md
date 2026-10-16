@@ -139,3 +139,11 @@ asserts both grants absent before successful completion. Tests pin blank-row
 behavior and grant independence in both directions with native-capable rollback
 actors, without changing any shipped native ACL. B8-P0 rehearsal, RFQ mail-send,
 projection performance, staging and pilot sign-off are outside this change.
+
+### DN-A posture and future DN-B analysis
+
+DN-A remains the current fail-closed P0 policy. The report hardening round changes
+no picking rule/group/access behavior. The [DN-B impact table](dn-b-proposal.md)
+is proposal analysis only: ownership, backfill and native coexistence remain
+owner decisions before P1. Current clean-install addon upgrade evidence is
+**not a business-data migration** or an authorization to classify/backfill data.
