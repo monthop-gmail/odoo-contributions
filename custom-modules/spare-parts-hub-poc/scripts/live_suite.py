@@ -76,6 +76,7 @@ if __name__=='__main__':
             execute()
             from upgrade_path import execute as upgrade
             upgrade()
+            upgrade(retained=True)
     except Exception as error:
         print('P0 upgrade/dashboard: FAIL ('+type(error).__name__+')')
         code=1

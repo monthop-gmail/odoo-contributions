@@ -15,3 +15,16 @@ def upgrade_checks(before,after):
         'clean_business_transactions':all(probe['business_counts']=={'sales':0,'purchases':0,'pickings':0,'reservations':0}
             for probe in (before,after)),
     }
+
+
+def retained_checks(before,after):
+    return {
+        'transactions_and_memberships_preserved':before['snapshot']==after['snapshot'],
+        'retained_xmlids':len(before['snapshot']['xmlids'])==len(after['snapshot']['xmlids'])==5,
+        'one_rule_xmlid':before['xmlid_count']==after['xmlid_count']==1,
+        'rule_identity_preserved':before['rule_id']==after['rule_id'],
+        'no_duplicate_rules':before['all_picking_rule_ids']==after['all_picking_rule_ids'],
+        'dn_a_rule_unchanged':before['rule_domain']==after['rule_domain'] and before['is_global'] is True and after['is_global'] is True,
+        'dn_a_visibility_preserved':before['visibility_counts']==after['visibility_counts']=={'none':0,'center_a':1,'center_b':1,'revoked':0},
+        'no_grant_changes':before['groups']==after['groups'] and all(row=={'implied':0,'assignees':0} for row in after['groups'].values()),
+    }
