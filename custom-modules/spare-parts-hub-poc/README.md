@@ -514,3 +514,40 @@ with one foreign candidate excluded at every size. These measurements characteri
 the synthetic path; they set no SLA and certify no production capacity. Markers
 `SPH_RFQ_CAPTURE` and `SPH_RULE_PERFORMANCE` are preserved in module-test logs.
 DN-A stays fail-closed; no picking rule, group, ACL or runtime policy is changed.
+
+### One-command owner walkthrough (OD2 piece 2)
+
+From this folder run **`python3 scripts/demo.py`**. WARNING: this deletes this
+checkout's disposable harness volumes. Never point it at a non-disposable DB.
+It reuses the existing Flow A CLI (down → fresh pinned up → scenario → down), then
+Flow B CLI on another fresh epoch, and always attempts a final teardown. Existing
+single-company / `sph_poc` / `disposable-test-harness` guards and session cleanup
+remain in force. No new seed/persona/profile is introduced; a separate demo/pilot
+seed remains out of scope.
+
+Read `evidence/Demo-walkthrough.md` in step order: synthetic persona/center,
+action, expected outcome, measured observed outcome, PASS/FAIL. The header records
+the checkout SHA, pins and distinct scenario epochs. Record IDs are **not
+joinable across epochs**. Flow A shows two centers racing for one unit and its
+reservation→SO link. Flow B shows shortage, bot draft/confirmation denial with
+durable audit, a different human approver, and an unvalidated receipt. It also
+observes zero completed stock moves/invoices and unchanged zero on-hand stock for
+the shortage product. No real stock/financial operation is performed.
+
+`python3 scripts/demo.py --from-evidence` only renders existing same-tip
+`Flow-A-results.json` / `Flow-B-results.json`; it does not start or wipe a harness.
+CI uses this builder after its existing full fresh Flow A/B live cases, without
+rerunning scenarios. `Demo-results.json` stores the validated ten-step table and
+source hashes; the P0 report reconstructs both JSON and Markdown from those
+sources and hashes both artifacts. Stale/mixed SHA/pins, missing or changed steps,
+failed observations or altered Markdown make the demo/report fail. Both are in
+`sph-harness-evidence`. This is a **synthetic P0 demo, not pilot sign-off**; owner
+validation and independent review remain separate.
+
+Optional LOW-OD2P1-1 is implemented: the live CI entrypoint checks baseline and
+registry diffs against independently reviewed `7ca94792` (#172). Touching BOTH
+files fails with `baseline+registry co-change requires independent hub review`.
+A shallow clone may fetch that public commit read-only using the existing fetch
+pattern; no workflow change, credential or permission is added. Advancing this
+reviewed anchor itself requires independent review. A single-file change still
+faces the existing digest/version/reviewer/source registration validation.

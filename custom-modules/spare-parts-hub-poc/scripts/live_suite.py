@@ -68,10 +68,14 @@ def run_suite(junit_path=JUNIT):
 if __name__=='__main__':
     code=1
     try:
+        from baseline_diff import execute as baseline_diff
+        baseline_diff()
         from rehearsal_start import capture
         capture()
         code=run_suite()
         if code==0:
+            from demo import execute as demo
+            if demo()['status']!='PASS':raise ValueError('Demo walkthrough failed')
             from dashboard import execute
             execute()
             from upgrade_path import execute as upgrade

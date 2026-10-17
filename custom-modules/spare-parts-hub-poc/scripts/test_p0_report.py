@@ -104,12 +104,23 @@ class TestP0Report(unittest.TestCase):
         ET.ElementTree(suite).write(root/'live-suite.xml')
         save('Fresh-live-start.json',{'commit':'fixture-tip','companies':1,'sales':0,'purchases':0,'reservations':0})
         save('manifest.json',{'commit':'fixture-tip'})
-        source={'commit':'fixture-tip','measurements':{'existing_sales_before':0,
-            'orders':[{'so_id':1,'state':'sale','requested_qty':1,'reserved_qty':0}],
-            'stockout_so_ids':[1],'stockout_audits':[{'audit_id':1,'so_id':1,'action':'sale.reserve.stockout','outcome':'deny'}],
-            'backorder_picking_ids':[]}}
-        for key in ('A','B'):save('Flow-'+key+'-results.json',source)
-        save('Dashboard-results.json',calculate({'A':source,'B':source},'fixture-tip'))
+        from test_demo import sources
+        from demo import build, markdown
+        from baseline_diff import REVIEWED
+        demos=sources()
+        for key,source in demos.items():
+            rows=source['measurements']['orders'] if key=='A' else [{'so_id':1,'state':'sale','reserved_qty':0}]
+            for row in rows:row['requested_qty']=1
+            if key=='A':rows.append({'so_id':2,'state':'sale','requested_qty':1,'reserved_qty':0})
+            shortage=2 if key=='A' else 1
+            source['measurements'].update(orders=rows,stockout_so_ids=[shortage],
+                stockout_audits=[{'audit_id':1,'so_id':shortage,'action':'sale.reserve.stockout','outcome':'deny'}],backorder_picking_ids=[])
+            save('Flow-'+key+'-results.json',source)
+        save('version-pins.json',{'fixture':'pinned'})
+        save('Baseline-diff-review.json',{'reviewed_sha':REVIEWED,'commit':'fixture-tip','status':'PASS','changed_paths':[]})
+        demo=build(demos,'fixture-tip',{'fixture':'pinned'});save('Demo-results.json',demo)
+        (root/'Demo-walkthrough.md').write_text(markdown(demo))
+        save('Dashboard-results.json',calculate(demos,'fixture-tip'))
         save('G2-request-results.json',g2);save('G3-authority-results.json',g3);save('Upgrade-results.json',self.upgrade());save('Retained-upgrade-results.json',self.retained())
 
     def test_report_fails_on_probe_mutation_shrink_or_no_contention(self):

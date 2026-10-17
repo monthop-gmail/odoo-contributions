@@ -43,6 +43,8 @@ class TestLiveSuite(unittest.TestCase):
 
 
 if __name__=='__main__':
+    from test_demo import TestDemo
+    from test_baseline_diff import TestBaselineDiff
     from test_dashboard import TestDashboard
     from test_p0_report import TestP0Report
     unittest.main()

@@ -6,6 +6,8 @@ from pathlib import Path
 import subprocess
 import xml.etree.ElementTree as ET
 from dashboard import calculate
+from demo import validate as validate_demo
+from baseline_diff import REVIEWED, validate_paths
 from harness import ROOT
 from test_results import validate_test_log
 from upgrade_path import PREVIOUS, RETAINED_PREVIOUS
@@ -128,6 +130,13 @@ def execute(directory=None):
         manifest=load('manifest.json')
         if manifest['commit']!=commit:raise ValueError('Stale live manifest')
         sources={key:load('Flow-'+key+'-results.json') for key in ('A','B')}
+        baseline_diff=load('Baseline-diff-review.json')
+        if baseline_diff['status']!='PASS' or baseline_diff['reviewed_sha']!=REVIEWED or baseline_diff['commit']!=commit:
+            raise ValueError('Missing/stale baseline co-change check')
+        validate_paths(baseline_diff['changed_paths'])
+        report['baseline_diff_review']=baseline_diff
+        report['demo']=validate_demo(load('Demo-results.json'),sources,commit,
+            json.loads((ROOT/'version-pins.json').read_text()),(directory/'Demo-walkthrough.md').read_text())
         measured=calculate(sources,commit);dashboard=load('Dashboard-results.json')
         if dashboard['commit']!=commit or dashboard['metrics']!=measured['metrics'] or dashboard['units']!=measured['units']:
             raise ValueError('Dashboard differs from measured flows')
@@ -160,6 +169,7 @@ def execute(directory=None):
     text+='| INFO-B8-2 upgrade | '+report.get('upgrade',{}).get('status','UNKNOWN')+' |\n\n'
     text+='Measured dashboard: `'+json.dumps(metrics,sort_keys=True)+'`. Units: `'+json.dumps(report.get('dashboard',{}).get('units',{}))+'`.\n\n'
     text+='G3: `'+json.dumps(report.get('g3',{}))+'`. Bound: `'+json.dumps(report.get('bound',{}))+'`.\n\n'
+    text+='Demo walkthrough: **'+report.get('demo',{}).get('status','UNKNOWN')+'**; see Demo-walkthrough.md for ordered expected/observed steps.\n\n'
     text+='Retained synthetic transaction upgrade: '+report.get('retained_upgrade',{}).get('status','UNKNOWN')+'. PO/picking/reservation/membership snapshots compared on the same isolated DB.\n\n'
     text+='INFO-B8P0-3: **NOT production/business-data migration approval**. Both empty and retained-SYNTHETIC fixtures are tested, never real data.\n\n'
     text+='Upgrade acceptance requires: previous B7c installed, same DB updated to final tip; exactly one XMLID, same rule ID, unchanged total picking-rule IDs, picking-only grant and post-upgrade isolation. See JSON/logs for the actual result; missing/failed checks do not pass.\n\n'

@@ -143,6 +143,9 @@ def main():
     parser.add_argument('--from-evidence', action='store_true', help='Render same-tip evidence only; do not start/wipe a harness.')
     args = parser.parse_args()
     if not args.from_evidence:
+        evidence = ROOT / 'evidence'
+        for name in ('Demo-results.json', 'Demo-walkthrough.md', 'Flow-A-results.json', 'Flow-B-results.json'):
+            (evidence / name).unlink(missing_ok=True)
         run_scenarios()
     return 0 if execute()['status'] == 'PASS' else 1
 
