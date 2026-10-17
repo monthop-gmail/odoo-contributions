@@ -8,8 +8,8 @@ import xml.etree.ElementTree as ET
 from dashboard import calculate
 from harness import ROOT
 from test_results import validate_test_log
-from upgrade_path import PREVIOUS
-from upgrade_evidence import upgrade_checks
+from upgrade_path import PREVIOUS, RETAINED_PREVIOUS
+from upgrade_evidence import upgrade_checks, retained_checks
 
 BASE='0e2f64e08a2c24b900c7c77f2d71231975298f50'
 BASE_ARTIFACT={'run_id':38796314664,'artifact_id':12002955569,
@@ -35,7 +35,32 @@ def validate_upgrade(data,commit):
         raise ValueError('Upgrade measured checks failed or reported flags disagree')
 
 
+class BaselineReviewRequired(ValueError):
+    pass
+
+
+def validate_baseline(baseline):
+    try:reviews=json.loads((ROOT/'p0-baseline-reviews.json').read_text())
+    except (OSError,ValueError):raise BaselineReviewRequired('baseline bump requires review: reviewed registration unavailable') from None
+    version=baseline.get('baseline_version')
+    entry=reviews.get('reviews',{}).get(str(version))
+    digest=hashlib.sha256(json.dumps(baseline,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    if (reviews.get('schema_version')!=1 or type(version) is not int or not entry or not baseline.get('reviewer') or
+            not baseline.get('review_source_ref') or entry['baseline_sha256']!=digest or
+            entry['reviewer']!=baseline['reviewer'] or entry['source_ref']!=baseline['review_source_ref']):
+        raise BaselineReviewRequired('baseline bump requires review: missing or mismatched reviewed baseline registration')
+    return entry
+
+
+def validate_retained(data,commit):
+    checks=retained_checks(data['before'],data['after'])
+    if (data['status']!='PASS' or data['previous_sha']!=RETAINED_PREVIOUS or data['final_sha']!=commit or
+            data['teardown']!='PASS' or data['assertions']!=checks or not all(checks.values())):
+        raise ValueError('Retained synthetic upgrade failed or stale')
+
+
 def validate_live_evidence(g2,g3,baseline):
+    validate_baseline(baseline)
     if baseline['schema_version']!=1:raise ValueError('Unknown evidence baseline schema')
     matrix=g3['matrix']
     if not matrix or not all(row['audit_seen'] is True for row in matrix):
@@ -43,7 +68,7 @@ def validate_live_evidence(g2,g3,baseline):
     if any(row['outcome'] not in ('deny','allow') for row in matrix):raise ValueError('Unknown G3 outcome')
     counts={'deny':sum(row['outcome']=='deny' for row in matrix),
         'allow':sum(row['outcome']=='allow' for row in matrix),'observations':len(matrix)}
-    if counts!=baseline['g3']:raise ValueError('G3 coverage differs from reviewed baseline')
+    if counts!=baseline['g3']:raise BaselineReviewRequired('baseline bump requires review: G3 coverage differs from reviewed 140/22/162 pin')
     if (counts['deny'],counts['allow'])!=(g3['deny_rows_observed'],g3['allow_rows_observed']):
         raise ValueError('G3 counts disagree')
     rounds=g2['round_count'];waits=g2['lock_wait_rounds']
@@ -62,7 +87,7 @@ def execute(directory=None):
     directory=Path(directory or ROOT/'evidence');directory.mkdir(exist_ok=True)
     commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     report={'scope':'P0 SYNTHETIC CI/disposable rehearsal; NOT pilot-ready',
-        'upgrade_limit':'Empty-business-DB addon update; NOT a business-data migration',
+        'upgrade_limit':'Empty and retained-SYNTHETIC addon upgrade fixtures only; NOT a production/business-data migration approval',
         'base_sha':BASE,'final_tip_sha':commit,'status':'FAIL',
         'ci_run_url':'https://github.com/'+os.environ.get('GITHUB_REPOSITORY','monthop-gmail/odoo-contributions')+
             '/actions/runs/'+os.environ.get('GITHUB_RUN_ID','local'),
@@ -92,12 +117,16 @@ def execute(directory=None):
         report['fresh_epochs']={key:source['measurements']['existing_sales_before'] for key,source in sources.items()}
         baseline=json.loads((ROOT/'p0-evidence-baseline.json').read_text())
         report['evidence_baseline']=baseline
+        report['baseline_review']=validate_baseline(baseline)
         g3=load('G3-authority-results.json');report['g2']=load('G2-request-results.json')
         report['g3']=validate_live_evidence(report['g2'],g3,baseline)
         report['upgrade']=load('Upgrade-results.json');validate_upgrade(report['upgrade'],commit)
+        report['retained_upgrade']=load('Retained-upgrade-results.json')
+        validate_retained(report['retained_upgrade'],commit)
         report['status']='PASS'
     except Exception as error:
         report['error_type']=type(error).__name__
+        if isinstance(error,BaselineReviewRequired):report['error_message']=str(error)
     files={str(path.relative_to(directory)):hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted(directory.rglob('*')) if path.is_file() and not path.name.startswith('P0-')}
     manifest_bytes=json.dumps(files,sort_keys=True,separators=(',',':')).encode()
@@ -112,12 +141,13 @@ def execute(directory=None):
     text+='| INFO-B8-2 upgrade | '+report.get('upgrade',{}).get('status','UNKNOWN')+' |\n\n'
     text+='Measured dashboard: `'+json.dumps(metrics,sort_keys=True)+'`. Units: `'+json.dumps(report.get('dashboard',{}).get('units',{}))+'`.\n\n'
     text+='G3: `'+json.dumps(report.get('g3',{}))+'`. Bound: `'+json.dumps(report.get('bound',{}))+'`.\n\n'
-    text+='INFO-B8P0-3: **NOT a business-data migration**. Empty-business-DB addon update only; no retained business transaction rows tested.\n\n'
+    text+='Retained synthetic transaction upgrade: '+report.get('retained_upgrade',{}).get('status','UNKNOWN')+'. PO/picking/reservation/membership snapshots compared on the same isolated DB.\n\n'
+    text+='INFO-B8P0-3: **NOT production/business-data migration approval**. Both empty and retained-SYNTHETIC fixtures are tested, never real data.\n\n'
     text+='Upgrade acceptance requires: previous B7c installed, same DB updated to final tip; exactly one XMLID, same rule ID, unchanged total picking-rule IDs, picking-only grant and post-upgrade isolation. See JSON/logs for the actual result; missing/failed checks do not pass.\n\n'
     text+='Evidence manifest SHA256: `'+report['artifact_digests']['evidence_manifest_sha256']+'`. Per-file/base-archive hashes in P0-report.json; report hash in P0-report.sha256. Final upload archive digest is recorded in hub after upload.\n\n'
     text+='DN-B8-1: **owner decision needed before P1**; global picking scope unchanged. INFO-B7b-4/5 remain backlog. Synthetic harness only; NOT pilot-ready. No staging/merge/deploy/spend/credentials/real data.\n'
     (directory/'P0-report.md').write_text(text)
-    print('SPH_P0_RESULT '+json.dumps({'status':report['status'],'commit':commit,'checks':checks}))
+    print('SPH_P0_RESULT '+json.dumps({'status':report['status'],'commit':commit,'checks':checks,'reason':report.get('error_message')}))
     return report
 
 

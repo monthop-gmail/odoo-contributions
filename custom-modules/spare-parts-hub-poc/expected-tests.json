@@ -124,5 +124,7 @@
   "TestPOCenterScope.test_malformed_company_context_fails_closed",
   "TestPOCenterScope.test_picking_grant_no_seeded_or_implied_authority",
   "TestPOCenterScope.test_po_and_picking_grants_are_independent",
-  "TestPOCenterScope.test_bot_either_visibility_grant_denies_authority"
+  "TestPOCenterScope.test_bot_either_visibility_grant_denies_authority",
+  "TestP0Leftovers.test_rfq_send_captured_no_smtp",
+  "TestP0Leftovers.test_rule_performance_characterization"
 ]

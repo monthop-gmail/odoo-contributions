@@ -1,16 +1,17 @@
 """P0 evidence must fail closed on skipped cases, stale upgrades or duplicate rules."""
 import json
+import copy
 import contextlib
 import io
 from pathlib import Path
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
-from p0_report import case_statuses, validate_upgrade, validate_live_evidence, execute
-from upgrade_evidence import upgrade_checks
+from p0_report import case_statuses, validate_upgrade, validate_live_evidence, validate_baseline, validate_retained, execute
+from upgrade_evidence import upgrade_checks, retained_checks
 from unittest.mock import patch
 from dashboard import calculate
-from upgrade_path import PREVIOUS
+from upgrade_path import PREVIOUS, RETAINED_PREVIOUS
 
 
 class TestP0Report(unittest.TestCase):
@@ -92,6 +93,7 @@ class TestP0Report(unittest.TestCase):
         g2,g3,baseline=self.live_data()
         def save(name,value):(root/name).write_text(json.dumps(value))
         save('expected-tests.json',['Fixture.test_smoke']);save('p0-evidence-baseline.json',baseline)
+        save('p0-baseline-reviews.json',json.loads((Path(__file__).resolve().parents[1]/'p0-baseline-reviews.json').read_text()))
         (root/'odoo-tests.log').write_text('Starting Fixture.test_smoke ...\n0 failed, 0 error(s)\n')
         suite=ET.Element('testsuite',failures='0',errors='0',skipped='0')
         for name in ('g1_http','g2_race','g3_authority','flow_a','flow_b'):ET.SubElement(suite,'testcase',name=name)
@@ -104,7 +106,7 @@ class TestP0Report(unittest.TestCase):
             'backorder_picking_ids':[]}}
         for key in ('A','B'):save('Flow-'+key+'-results.json',source)
         save('Dashboard-results.json',calculate({'A':source,'B':source},'fixture-tip'))
-        save('G2-request-results.json',g2);save('G3-authority-results.json',g3);save('Upgrade-results.json',self.upgrade())
+        save('G2-request-results.json',g2);save('G3-authority-results.json',g3);save('Upgrade-results.json',self.upgrade());save('Retained-upgrade-results.json',self.retained())
 
     def test_report_fails_on_probe_mutation_shrink_or_no_contention(self):
         for mutation in ('probe','g3','g2'):
@@ -130,6 +132,42 @@ class TestP0Report(unittest.TestCase):
             root=Path(directory);self.report_fixture(root)
             with patch('p0_report.ROOT',root),patch('p0_report.subprocess.check_output',return_value='fixture-tip\n'),contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(execute(root)['status'],'PASS')
+
+    def retained(self):
+        before={'snapshot':{'xmlids':list(range(5)),'orders':[{'id':7,'state':'purchase'}]},
+            'xmlid_count':1,'rule_id':192,'all_picking_rule_ids':[128,185,192],
+            'rule_domain':'picking_hub else memberships','is_global':True,
+            'groups':{'po':{'implied':0,'assignees':0}},
+            'visibility_counts':{'none':0,'center_a':1,'center_b':1,'revoked':0}}
+        after=copy.deepcopy(before)
+        return {'status':'PASS','previous_sha':RETAINED_PREVIOUS,'final_sha':'fixture-tip','teardown':'PASS',
+            'before':before,'after':after,'assertions':retained_checks(before,after)}
+
+    def test_retained_loss_or_visibility_change_rejected(self):
+        for field in ('snapshot','visibility_counts'):
+            data=self.retained()
+            if field=='snapshot':data['after']['snapshot']['orders']=[]
+            else:data['after']['visibility_counts']['none']=1
+            data['assertions']=retained_checks(data['before'],data['after'])
+            with self.assertRaises(ValueError):validate_retained(data,'fixture-tip')
+
+    def test_baseline_bump_needs_review_registration(self):
+        baseline=self.live_data()[2]
+        for field,value in (('baseline_version',2),('reviewer','unreviewed'),('review_source_ref','')):
+            changed=copy.deepcopy(baseline);changed[field]=value
+            with self.assertRaisesRegex(ValueError,'baseline bump requires review'):validate_baseline(changed)
+        changed=copy.deepcopy(baseline);changed['g3']['deny']+=1;changed['g3']['observations']+=1
+        with self.assertRaisesRegex(ValueError,'baseline bump requires review'):validate_baseline(changed)
+
+    def test_report_clearly_explains_unreviewed_bump(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);self.report_fixture(root)
+            file=root/'p0-evidence-baseline.json';data=json.loads(file.read_text());data['baseline_version']=2
+            file.write_text(json.dumps(data))
+            with patch('p0_report.ROOT',root),patch('p0_report.subprocess.check_output',return_value='fixture-tip\n'),contextlib.redirect_stdout(io.StringIO()):
+                result=execute(root)
+            self.assertEqual(result['status'],'FAIL')
+            self.assertIn('baseline bump requires review',result['error_message'])
 
 
 if __name__=='__main__':unittest.main()
