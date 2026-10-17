@@ -44,7 +44,9 @@ def build(sources, commit, pins):
         {'two_distinct_centers': len(set(a['seed']['centers'])) == len(a['seed']['centers']) == 2,
             'initial_free': a['initial_free'], 'winners': a['winners'], 'losers': a['losers'],
             'contention': a['observed_lock_waiters'] >= 2})
-    step('A2', 'FIXTURE losing reservist', a['seed']['centers'], 'Observe generic shortage denial',
+    loser_index = next(index for index, center in enumerate(a['seed']['centers']) if center != a['winner_center_id'])
+    step('A2', 'FIXTURE losing reservist ' + str(a['seed']['reservists'][loser_index]),
+        a['seed']['centers'][loser_index], 'Observe generic shortage denial',
         {'message': 'Unavailable'}, {'message': a['loser_message']})
     reservation = a['winning_reservation']
     step('A3', 'FIXTURE winning reservist', a['winner_center_id'], 'Inspect reservation → confirmed SO link',
