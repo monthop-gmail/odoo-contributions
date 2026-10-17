@@ -94,6 +94,7 @@ class TestDashboard(unittest.TestCase):
         args=self.fixture()
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);evidence=root/'evidence';evidence.mkdir()
+            (root/'docs').mkdir();(root/'docs/dashboard-formulas.md').write_text('FIXTURE formulas')
             def save(name,value):(evidence/name).write_text(json.dumps(value))
             for key,value in args[0].items():save('Flow-'+key+'-results.json',value)
             save('Demo-results.json',args[2]);(evidence/'Demo-walkthrough.md').write_text(args[3])

@@ -91,6 +91,8 @@ class TestP0Report(unittest.TestCase):
 
     def report_fixture(self,root):
         g2,g3,baseline=self.live_data()
+        (root/'docs').mkdir();(root/'docs/dashboard-formulas.md').write_text('FIXTURE formulas')
+        (root/'Dashboard-formulas.md').write_text('FIXTURE formulas')
         def save(name,value):(root/name).write_text(json.dumps(value))
         save('expected-tests.json',['Fixture.test_smoke']);save('p0-evidence-baseline.json',baseline)
         save('p0-baseline-reviews.json',json.loads((Path(__file__).resolve().parents[1]/'p0-baseline-reviews.json').read_text()))

@@ -573,3 +573,7 @@ its own edits against its current fixed anchor would flag the implementing commi
 itself. No self-approval/anchor exception is introduced to turn that red check
 green. The existing baseline+registry co-change gate and hub-review requirement
 for changing its anchor remain intact; this piece leaves that script unchanged.
+
+The artifact also includes `Dashboard-formulas.md`, an exact validated copy of the
+repo formula document, so its owner-confirmation link works when downloaded
+without the checkout. The P0 report checks the copy against the source.

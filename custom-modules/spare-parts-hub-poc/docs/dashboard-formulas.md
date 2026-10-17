@@ -85,3 +85,7 @@ all dynamic HTML values are escaped.
 
 LOW-OD2P2-1: the profile in A0/B0 is now explicitly labelled **asserted** by the
 existing seed invocation, not independently measured. No seed/profile was added.
+
+For standalone downloads, the renderer copies this document to
+`evidence/Dashboard-formulas.md`; the P0 report requires byte equality with the
+checkout source. The HTML links to that bundled copy.

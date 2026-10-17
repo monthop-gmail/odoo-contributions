@@ -84,6 +84,7 @@ def reconcile(sources,commit,demo,walkthrough,pins,g3,gates):
         raise ValueError('Dashboard allocation differs from demo')
     if set(gates)!={'tests','failures','errors','skipped'} or gates['tests']!=5 or any(type(v) is not int or v<0 for v in gates.values()):
         raise ValueError('Invalid live gate summary')
+    result['definitions_file']='Dashboard-formulas.md'
     result['ci_gate_blockers']=sum(gates[key] for key in ('failures','errors','skipped'))
     result.update(epochs=demo['epochs'],pins=pins,g3_pin=g3,status='PASS',gate_summary=gates,
         demo={'file':'Demo-results.json','walkthrough':'Demo-walkthrough.md',
@@ -133,7 +134,7 @@ def render(result):
         '<p>G3 exact pin: <code>'+dump(result['g3_pin'])+'</code></p><p>Scenario epochs: <code>'+dump(result['epochs'])+'</code>. Record IDs are not joinable across epochs.</p>'
         '<table><thead><tr><th>Metric</th><th>Numerator / denominator</th><th>Formula</th><th>Counted records</th><th>Walkthrough</th></tr></thead><tbody>'+''.join(rows)+'</tbody></table>'
         '<h2>Metric meanings for owner confirmation (M6.4)</h2><ul>'+meanings+'</ul>'
-        '<p><a href="../docs/dashboard-formulas.md">Formula definitions</a> · <a href="Demo-walkthrough.md">Matching demo walkthrough</a> · <a href="Demo-results.json">Demo JSON</a> · <a href="Dashboard-results.json">Dashboard evidence</a></p></body></html>\n')
+        '<p><a href="Dashboard-formulas.md">Formula definitions</a> · <a href="Demo-walkthrough.md">Matching demo walkthrough</a> · <a href="Demo-results.json">Demo JSON</a> · <a href="Dashboard-results.json">Dashboard evidence</a></p></body></html>\n')
 
 
 def validate(result,page,sources,commit,demo,walkthrough,pins,g3,gates):
@@ -156,6 +157,7 @@ def execute(directory=None):
     result=reconcile(sources,commit,load('Demo-results.json'),(directory/'Demo-walkthrough.md').read_text(),
         json.loads((ROOT/'version-pins.json').read_text()),json.loads((ROOT/'p0-evidence-baseline.json').read_text())['g3'],
         gate_summary(directory/'live-suite.xml'))
+    (directory/'Dashboard-formulas.md').write_bytes((ROOT/'docs/dashboard-formulas.md').read_bytes())
     (directory/'Dashboard-results.json').write_text(json.dumps(result,indent=2)+'\n')
     (directory/'Dashboard.html').write_text(render(result))
     print('SPH_DASHBOARD_RESULT '+json.dumps({'commit':commit,'metrics':result['metrics'],'units':result['units']}))

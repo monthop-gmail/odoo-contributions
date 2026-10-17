@@ -137,6 +137,8 @@ def execute(directory=None):
         report['baseline_diff_review']=baseline_diff
         report['demo']=validate_demo(load('Demo-results.json'),sources,commit,
             json.loads((ROOT/'version-pins.json').read_text()),(directory/'Demo-walkthrough.md').read_text())
+        if (directory/'Dashboard-formulas.md').read_bytes()!=(ROOT/'docs/dashboard-formulas.md').read_bytes():
+            raise ValueError('Dashboard formula copy differs from reviewed source')
         dashboard=validate_dashboard(load('Dashboard-results.json'),(directory/'Dashboard.html').read_text(),
             sources,commit,report['demo'],(directory/'Demo-walkthrough.md').read_text(),
             json.loads((ROOT/'version-pins.json').read_text()),json.loads((ROOT/'p0-evidence-baseline.json').read_text())['g3'],
