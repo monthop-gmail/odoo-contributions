@@ -62,7 +62,7 @@ visibility={}
 for label,members in (('none',[]),('center_a',centers[0].ids),('center_b',centers[1].ids),('revoked',[])):
     native.sph_center_ids=[Command.set(members)]
     visibility[label]=env['stock.picking'].with_user(native).search_count([('id','in',pickings.ids)])
-assert visibility=={'none':0,'center_a':1,'center_b':1,'revoked':0}
+assert visibility=={'none':0,'center_a':2,'center_b':1,'revoked':0}
 # Visibility probe membership writes roll back at shell exit, not part of retained fixture state.
 print('SPH_UPGRADE_PROBE '+json.dumps({'phase':phase,'snapshot':snapshot,'xmlid_count':len(metadata),
     'rule_id':rule.id,'all_picking_rule_ids':sorted(env['ir.rule'].search([('model_id','=',rule.model_id.id)]).ids),

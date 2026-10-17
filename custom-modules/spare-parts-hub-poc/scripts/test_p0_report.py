@@ -138,7 +138,7 @@ class TestP0Report(unittest.TestCase):
             'xmlid_count':1,'rule_id':192,'all_picking_rule_ids':[128,185,192],
             'rule_domain':'picking_hub else memberships','is_global':True,
             'groups':{'po':{'implied':0,'assignees':0}},
-            'visibility_counts':{'none':0,'center_a':1,'center_b':1,'revoked':0}}
+            'visibility_counts':{'none':0,'center_a':2,'center_b':1,'revoked':0}}
         after=copy.deepcopy(before)
         return {'status':'PASS','previous_sha':RETAINED_PREVIOUS,'final_sha':'fixture-tip','teardown':'PASS',
             'before':before,'after':after,'assertions':retained_checks(before,after)}

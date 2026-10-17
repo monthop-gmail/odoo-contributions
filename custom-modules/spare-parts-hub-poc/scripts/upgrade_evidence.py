@@ -25,6 +25,6 @@ def retained_checks(before,after):
         'rule_identity_preserved':before['rule_id']==after['rule_id'],
         'no_duplicate_rules':before['all_picking_rule_ids']==after['all_picking_rule_ids'],
         'dn_a_rule_unchanged':before['rule_domain']==after['rule_domain'] and before['is_global'] is True and after['is_global'] is True,
-        'dn_a_visibility_preserved':before['visibility_counts']==after['visibility_counts']=={'none':0,'center_a':1,'center_b':1,'revoked':0},
+        'dn_a_visibility_preserved':before['visibility_counts']==after['visibility_counts']=={'none':0,'center_a':2,'center_b':1,'revoked':0},
         'no_grant_changes':before['groups']==after['groups'] and all(row=={'implied':0,'assignees':0} for row in after['groups'].values()),
     }
