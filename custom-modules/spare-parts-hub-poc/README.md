@@ -485,8 +485,32 @@ and minimum G2 coverage/contention (4 rounds / at least 1 witnessed lock-wait ro
 A smaller internally consistent G3 matrix or zero contention cannot produce PASS.
 Intentional coverage changes require an explicit baseline update and review.
 
-INFO-B8P0-3: **NOT a business-data migration**. This is an empty-business-DB addon
-update with synthetic seed fixtures and rollback-only probe rows; it does not test
-retained transactional data migration or backfill. See the
+INFO-B8P0-3: **NOT production/business-data migration approval**. Alongside the
+empty-business-DB check, the retained-data check installs `e481eeda`, commits
+synthetic POs, receipt/picking rows, an SO/reservation and center assignments, then
+updates that same isolated DB to the checkout tip. Before/after snapshots, XMLIDs,
+rule IDs and DN-A visibility must agree. This does not authorize real-data
+migration or DN-B backfill. See the
 [DN-B upgrade/backfill impact proposal](docs/dn-b-proposal.md) for analysis only.
 DN-A remains fail-closed; picking rules, groups and access policy are unchanged.
+
+#### Reviewed baseline changes (OD2 piece 1)
+
+The exact G3 baseline remains **140 deny / 22 allow / 162 total**. The baseline
+file carries `baseline_version`, `reviewer` and `review_source_ref`; the matching
+entry in `p0-baseline-reviews.json` registers the canonical baseline SHA256.
+A changed baseline or unregistered version fails with **baseline bump requires
+review**. To propose a bump: retain failing evidence, explain each changed path,
+obtain independent review in the hub, then update version/reviewer/source and the
+registration together in a reviewed commit. Never reduce coverage merely to make
+CI pass. The registration is review metadata, not a cryptographic authorization
+service; changes to both files require independent review.
+
+`test_leftovers.py` exercises RFQ composition and sending with a captured mail
+transport and SMTP/SMTP_SSL tripwires. Native Purchase capability exists only in
+that rollback-only test actor, never in P0 seed data. It also records warm-cache
+mail/attachment search/read query counts and timings at 2/10/30 authorized POs,
+with one foreign candidate excluded at every size. These measurements characterize
+the synthetic path; they set no SLA and certify no production capacity. Markers
+`SPH_RFQ_CAPTURE` and `SPH_RULE_PERFORMANCE` are preserved in module-test logs.
+DN-A stays fail-closed; no picking rule, group, ACL or runtime policy is changed.

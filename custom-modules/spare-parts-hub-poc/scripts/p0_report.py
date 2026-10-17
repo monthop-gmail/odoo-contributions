@@ -145,7 +145,7 @@ def execute(directory=None):
     text+='INFO-B8P0-3: **NOT production/business-data migration approval**. Both empty and retained-SYNTHETIC fixtures are tested, never real data.\n\n'
     text+='Upgrade acceptance requires: previous B7c installed, same DB updated to final tip; exactly one XMLID, same rule ID, unchanged total picking-rule IDs, picking-only grant and post-upgrade isolation. See JSON/logs for the actual result; missing/failed checks do not pass.\n\n'
     text+='Evidence manifest SHA256: `'+report['artifact_digests']['evidence_manifest_sha256']+'`. Per-file/base-archive hashes in P0-report.json; report hash in P0-report.sha256. Final upload archive digest is recorded in hub after upload.\n\n'
-    text+='DN-B8-1: **owner decision needed before P1**; global picking scope unchanged. INFO-B7b-4/5 remain backlog. Synthetic harness only; NOT pilot-ready. No staging/merge/deploy/spend/credentials/real data.\n'
+    text+='DN-B8-1: **owner decision needed before P1**; global picking scope unchanged. INFO-B7b-4/5 synthetic mail capture and performance characterization are in module-test logs; production capacity remains unvalidated. Synthetic harness only; NOT pilot-ready. No staging/merge/deploy/spend/credentials/real data.\n'
     (directory/'P0-report.md').write_text(text)
     print('SPH_P0_RESULT '+json.dumps({'status':report['status'],'commit':commit,'checks':checks,'reason':report.get('error_message')}))
     return report
