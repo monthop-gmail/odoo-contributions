@@ -1,5 +1,10 @@
 """Walkthrough provenance, step integrity and fail-closed orchestration."""
 import copy
+import contextlib
+import io
+import json
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 from demo import build, markdown, validate, run_scenarios
@@ -14,7 +19,7 @@ def sources():
         winning_reservation={'id': 1, 'so_id': 1, 'move_id': 1, 'state': 'active'},
         measurements={'existing_sales_before': 0, 'orders': [{'so_id': 1, 'state': 'sale', 'reserved_qty': 1}]})
     b = dict(shared, epoch_id='b' * 32, seed={'center_id': 6, 'reservist_uid': 12, 'bot_uid': 13, 'approver_uid': 7},
-        initial_free=0, shortage_message='Unavailable', shortage_so_id=1, bot_drafted_state='draft', maker_uid=13,
+        po_id=1, initial_free=0, shortage_message='Unavailable', shortage_so_id=1, bot_drafted_state='draft', maker_uid=13,
         checker_uid=7, bot_confirm='DENIED', state_after_bot_denial='draft', durable_bot_deny_audit=True,
         receipt_ids_after_bot_denial=[], final_po_state='purchase', maker_checker_distinct=True,
         human_confirm_allow_audit=True, receipt_ids=[2], receipt_states=[{'id': 2, 'state': 'confirmed'}],
@@ -38,6 +43,23 @@ class TestDemo(unittest.TestCase):
     def test_missing_step_rejected(self):
         data = sources(); result = build(data, 'fixture-tip', {'fixture': 'pinned'}); result['steps'].pop()
         with self.assertRaises(ValueError): validate(result, data, 'fixture-tip', {'fixture': 'pinned'}, markdown(result))
+
+    def test_cli_evidence_mode_fails_nonzero_and_replaces_stale_artifacts(self):
+        from demo import main
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'evidence').mkdir()
+            (root/'version-pins.json').write_text(json.dumps({'fixture':'pinned'}))
+            for key,source in sources().items():
+                source['commit']='stale'
+                (root/'evidence'/('Flow-'+key+'-results.json')).write_text(json.dumps(source))
+            (root/'evidence/Demo-walkthrough.md').write_text('stale PASS')
+            with patch('demo.ROOT',root),patch('demo.subprocess.check_output',return_value='fixture-tip\n'),\
+                    patch('sys.argv',['demo.py','--from-evidence']),patch('demo.run_scenarios') as run,\
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(main(),1)
+            run.assert_not_called()
+            self.assertEqual(json.loads((root/'evidence/Demo-results.json').read_text())['status'],'FAIL')
+            self.assertNotIn('stale PASS',(root/'evidence/Demo-walkthrough.md').read_text())
 
     def test_failed_step_never_passes(self):
         data = sources(); data['B']['durable_bot_deny_audit'] = False

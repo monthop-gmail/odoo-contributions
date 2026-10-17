@@ -148,6 +148,20 @@ class TestP0Report(unittest.TestCase):
             with patch('p0_report.ROOT',root),patch('p0_report.subprocess.check_output',return_value='fixture-tip\n'),contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(execute(root)['status'],'PASS')
 
+    def test_report_rejects_stale_failed_or_tampered_demo(self):
+        for mutation in ('sha', 'missing', 'failed', 'expected', 'markdown'):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);self.report_fixture(root)
+                path=root/'Demo-results.json';data=json.loads(path.read_text())
+                if mutation=='sha':data['commit']='stale'
+                elif mutation=='missing':data['steps'].pop()
+                elif mutation=='failed':data['steps'][0]['status']='FAIL'
+                elif mutation=='expected':data['steps'][0]['expected']['company_count']=2
+                else:(root/'Demo-walkthrough.md').write_text('tampered walkthrough')
+                path.write_text(json.dumps(data))
+                with patch('p0_report.ROOT',root),patch('p0_report.subprocess.check_output',return_value='fixture-tip\n'),contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(execute(root)['status'],'FAIL')
+
     def retained(self):
         before={'snapshot':{'xmlids':list(range(5)),'orders':[{'id':7,'state':'purchase'}]},
             'xmlid_count':1,'rule_id':192,'all_picking_rule_ids':[128,185,192],

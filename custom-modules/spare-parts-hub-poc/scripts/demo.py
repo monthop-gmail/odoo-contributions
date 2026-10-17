@@ -78,6 +78,12 @@ def build(sources, commit, pins):
             sorted(row['id'] for row in b['receipt_states']) == sorted(b['receipt_ids']) and
             all(row['state'] not in ('done', 'cancel') for row in b['receipt_states']),
             'completed_stock_moves': b['completed_stock_moves'], 'invoice_ids': b['invoice_ids'], 'on_hand_quantity': b['on_hand_quantity']})
+    details = {'A1': {'so_ids': a['orders']}, 'A3': {'reservation': reservation},
+        'B2': {'po_id': b['po_id']}, 'B3': {'po_id': b['po_id']},
+        'B4': {'po_id': b['po_id'], 'maker_uid': b['maker_uid'], 'checker_uid': b['checker_uid']},
+        'B5': {'receipt_states': b['receipt_states']}}
+    for row in steps:
+        row['evidence'] = details.get(row['id'], {})
     return {'schema_version': 1, 'scope': 'Synthetic P0 demo, not pilot sign-off',
         'commit': commit, 'pins': pins, 'epochs': epochs,
         'epoch_boundary': 'A and B are separate fresh disposable databases. Record IDs are NOT joinable across epochs.',
@@ -93,7 +99,8 @@ def markdown(result):
     text += '| Step | Synthetic persona / center | Action | Expected | Observed | Result |\n|---|---|---|---|---|---|\n'
     for row in result['steps']:
         values = [row['id'], row['persona'] + ' / ' + str(row['center']), row['action'],
-            json.dumps(row['expected'], sort_keys=True), json.dumps(row['observed'], sort_keys=True), row['status']]
+            json.dumps(row['expected'], sort_keys=True), json.dumps(row['observed'], sort_keys=True) +
+                ('; evidence=' + json.dumps(row['evidence'], sort_keys=True) if row['evidence'] else ''), row['status']]
         text += '| ' + ' | '.join(value.replace('|', '\\|').replace('\n', ' ') for value in values) + ' |\n'
     text += '\nOverall: **' + result['status'] + '**. Receipt creation is not receipt validation; no delivery/receipt is validated and no invoice is created by Flow B.\n'
     return text
@@ -115,8 +122,8 @@ def execute(directory=None):
         result = build(sources, commit, pins)
         walkthrough = markdown(result)
     except Exception as error:
-        result = {'status': 'FAIL', 'commit': commit, 'error_type': type(error).__name__, 'steps': []}
-        walkthrough = '# Synthetic P0 demo — FAIL\n\nMissing, stale or malformed scenario evidence.\n'
+        result = {'status': 'FAIL', 'commit': commit, 'pins': pins, 'error_type': type(error).__name__, 'steps': []}
+        walkthrough = '# Synthetic P0 demo, not pilot sign-off — FAIL\n\nCommit: `' + commit + '`\n\nPins: `' + json.dumps(pins, sort_keys=True) + '`\n\nMissing, stale or malformed scenario evidence; epochs unverified.\n'
     (directory / 'Demo-results.json').write_text(json.dumps(result, indent=2) + '\n')
     (directory / 'Demo-walkthrough.md').write_text(walkthrough)
     print('SPH_DEMO_RESULT ' + json.dumps({'commit': commit, 'status': result['status'], 'steps': len(result['steps'])}))
