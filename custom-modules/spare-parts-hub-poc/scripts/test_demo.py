@@ -25,6 +25,11 @@ def sources():
         human_confirm_allow_audit=True, receipt_ids=[2], receipt_states=[{'id': 2, 'state': 'confirmed'}],
         completed_stock_moves=0, invoice_ids=[], on_hand_quantity=0,
         measurements={'existing_sales_before': 0, 'stockout_so_ids': [1]})
+    a['measurements'].update(orders=[{'so_id':1,'state':'sale','requested_qty':1,'reserved_qty':1},
+        {'so_id':2,'state':'sale','requested_qty':1,'reserved_qty':0}],stockout_so_ids=[2],
+        stockout_audits=[{'audit_id':1,'so_id':2,'action':'sale.reserve.stockout','outcome':'deny'}],backorder_picking_ids=[])
+    b['measurements'].update(orders=[{'so_id':1,'state':'sale','requested_qty':1,'reserved_qty':0}],
+        stockout_audits=[{'audit_id':1,'so_id':1,'action':'sale.reserve.stockout','outcome':'deny'}],backorder_picking_ids=[])
     return {'A': a, 'B': b}
 
 

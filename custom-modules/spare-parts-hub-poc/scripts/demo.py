@@ -37,6 +37,8 @@ def build(sources, commit, pins):
             {field: source[field] for field in ('database', 'profile', 'company_count', 'sessions_cleaned')} |
                 {'existing_sales_before': source['measurements']['existing_sales_before']})
     # Keep the owner walkthrough in execution order: all A steps, then all B steps.
+    for row in steps:
+        row['observation_kinds']={'profile':'asserted by disposable-test-harness seed invocation; not independently measured'}
     b_setup = steps.pop()
     step('A1', 'FIXTURE reservists ' + str(a['seed']['reservists']), a['seed']['centers'],
         'Two centers concurrently reserve the last unit',
@@ -86,6 +88,8 @@ def build(sources, commit, pins):
         'B5': {'receipt_states': b['receipt_states']}}
     for row in steps:
         row['evidence'] = details.get(row['id'], {})
+        if row['id'] in ('A3','B5'):
+            row['evidence']['dashboard_measurements'] = sources[row['id'][0]]['measurements']
     return {'schema_version': 1, 'scope': 'Synthetic P0 demo, not pilot sign-off',
         'commit': commit, 'pins': pins, 'epochs': epochs,
         'epoch_boundary': 'A and B are separate fresh disposable databases. Record IDs are NOT joinable across epochs.',
@@ -100,10 +104,11 @@ def markdown(result):
     text += 'Epochs: `' + json.dumps(result['epochs'], sort_keys=True) + '`. ' + result['epoch_boundary'] + '\n\n'
     text += '| Step | Synthetic persona / center | Action | Expected | Observed | Result |\n|---|---|---|---|---|---|\n'
     for row in result['steps']:
-        values = [row['id'], row['persona'] + ' / ' + str(row['center']), row['action'],
+        values = ['<a id="' + row['id'].lower() + '"></a>' + row['id'], row['persona'] + ' / ' + str(row['center']), row['action'],
             json.dumps(row['expected'], sort_keys=True), json.dumps(row['observed'], sort_keys=True) +
                 ('; evidence=' + json.dumps(row['evidence'], sort_keys=True) if row['evidence'] else ''), row['status']]
         text += '| ' + ' | '.join(value.replace('|', '\\|').replace('\n', ' ') for value in values) + ' |\n'
+    text += '\nA0/B0 profile: **asserted** by the disposable-test-harness seed invocation; not independently measured. Database, company count and session cleanup are observed.\n'
     text += '\nOverall: **' + result['status'] + '**. Receipt creation is not receipt validation; no delivery/receipt is validated and no invoice is created by Flow B.\n'
     return text
 

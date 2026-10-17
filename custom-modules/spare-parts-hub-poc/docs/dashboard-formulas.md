@@ -44,3 +44,44 @@ I7: separate-cursor `.locked.bundle` evidence is now feasible and asserted by
 failed real HTTP SO and PO writes in G3. A fresh observer sees the durable deny
 row and unchanged fields after rollback. Bound tests remain same-cursor,
 rollback-only; they are not labelled durable.
+
+## OD2 piece 3: reconciliation with the owner walkthrough
+
+The original `calculate()` formulas above are unchanged. The rendering layer first
+revalidates Demo-results.json and Demo-walkthrough.md against both same-tip source
+snapshots and pins. It records the exact A/B epoch IDs and demo JSON/Markdown/source
+hashes. A3/B5 now carry the existing dashboard measurements as step evidence (no
+new query or scenario). Reconciliation requires A's two one-unit requested SOs to
+match its race winner/loser and native allocation, and B's one-unit shortage SO to
+remain unallocated. Stockout SO identities must match those losing/shortage orders
+and the durable audit provenance. Backorders and unfilled confirmed orders come
+from these same step snapshots, never inferred from a purchase receipt.
+
+The HTML shows requested/reserved unit numerator and denominator (1 / 3 = 33.33%
+for the current measured run), formulas, epoch-namespaced record references, and
+links to explicit walkthrough anchors. Count metrics are labelled counts: the SO
+population is context for stockouts/blockers, not an SLA percentage. Backorders
+have no observed whole-picking population denominator, so the denominator is
+explicitly **not applicable**, rather than invented. CI blockers use the five live
+cases as their population and remain separate from fulfillment. Empty reference
+lists mean no matching observed records, not missing input.
+
+`python3 scripts/dashboard.py --from-evidence` only reads existing evidence and
+renders JSON/HTML; it never starts a harness. The P0 report rebuilds the entire
+Dashboard-results.json and Dashboard.html and compares both exactly, including
+epochs, inputs, demo links/hashes, derivations and HTML. Missing/stale/tampered or
+shared/swapped-epoch evidence fails. Both files are included in the evidence-files
+digest and upload artifact. No JavaScript, external assets or Odoo endpoint is used;
+all dynamic HTML values are escaped.
+
+### M6.4 meanings awaiting owner confirmation — nothing confirmed here
+
+- Reservation fill is observed allocation, not delivered fill or a service level.
+- Unfilled demand is not automatically a native backorder.
+- Stockouts count audited scenario shortage attempts, not distinct catalog items.
+- Open fulfillment blockers count unfilled confirmed SOs, not hub/owner tasks.
+- Scenario epochs are separate disposable databases; IDs cannot be joined across
+  epochs. These are synthetic demo measurements, not business KPIs or SLA targets.
+
+LOW-OD2P2-1: the profile in A0/B0 is now explicitly labelled **asserted** by the
+existing seed invocation, not independently measured. No seed/profile was added.

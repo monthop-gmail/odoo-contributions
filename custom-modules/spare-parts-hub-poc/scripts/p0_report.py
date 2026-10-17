@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import xml.etree.ElementTree as ET
-from dashboard import calculate
+from dashboard import calculate, validate as validate_dashboard, gate_summary
 from demo import validate as validate_demo
 from baseline_diff import REVIEWED, validate_paths
 from harness import ROOT
@@ -137,10 +137,12 @@ def execute(directory=None):
         report['baseline_diff_review']=baseline_diff
         report['demo']=validate_demo(load('Demo-results.json'),sources,commit,
             json.loads((ROOT/'version-pins.json').read_text()),(directory/'Demo-walkthrough.md').read_text())
-        measured=calculate(sources,commit);dashboard=load('Dashboard-results.json')
-        if dashboard['commit']!=commit or dashboard['metrics']!=measured['metrics'] or dashboard['units']!=measured['units']:
-            raise ValueError('Dashboard differs from measured flows')
-        report['dashboard']={'metrics':measured['metrics'],'units':measured['units'],
+        dashboard=validate_dashboard(load('Dashboard-results.json'),(directory/'Dashboard.html').read_text(),
+            sources,commit,report['demo'],(directory/'Demo-walkthrough.md').read_text(),
+            json.loads((ROOT/'version-pins.json').read_text()),json.loads((ROOT/'p0-evidence-baseline.json').read_text())['g3'],
+            gate_summary(directory/'live-suite.xml'))
+        report['dashboard']={'metrics':dashboard['metrics'],'units':dashboard['units'],'epochs':dashboard['epochs'],
+            'demo':dashboard['demo'],'derivations':dashboard['derivations'],
             'formulas':'docs/dashboard-formulas.md','definition':'Reserved/requested units; not delivered fill. Blockers = unfilled confirmed demo orders.'}
         report['fresh_epochs']={key:source['measurements']['existing_sales_before'] for key,source in sources.items()}
         baseline=json.loads((ROOT/'p0-evidence-baseline.json').read_text())
@@ -173,7 +175,7 @@ def execute(directory=None):
     text+='Retained synthetic transaction upgrade: '+report.get('retained_upgrade',{}).get('status','UNKNOWN')+'. PO/picking/reservation/membership snapshots compared on the same isolated DB.\n\n'
     text+='INFO-B8P0-3: **NOT production/business-data migration approval**. Both empty and retained-SYNTHETIC fixtures are tested, never real data.\n\n'
     text+='Upgrade acceptance requires: previous B7c installed, same DB updated to final tip; exactly one XMLID, same rule ID, unchanged total picking-rule IDs, picking-only grant and post-upgrade isolation. See JSON/logs for the actual result; missing/failed checks do not pass.\n\n'
-    text+='Evidence manifest SHA256: `'+report['artifact_digests']['evidence_manifest_sha256']+'`. Per-file/base-archive hashes in P0-report.json; report hash in P0-report.sha256. Final upload archive digest is recorded in hub after upload.\n\n'
+    text+='Evidence-files digest SHA256: `'+report['artifact_digests']['evidence_manifest_sha256']+'`. Per-file/base-archive hashes in P0-report.json; report hash in P0-report.sha256. Final upload archive digest is recorded in hub after upload.\n\n'
     text+='DN-B8-1: **owner decision needed before P1**; global picking scope unchanged. INFO-B7b-4/5 synthetic mail capture and performance characterization are in module-test logs; production capacity remains unvalidated. Synthetic harness only; NOT pilot-ready. No staging/merge/deploy/spend/credentials/real data.\n'
     (directory/'P0-report.md').write_text(text)
     print('SPH_P0_RESULT '+json.dumps({'status':report['status'],'commit':commit,'checks':checks,'reason':report.get('error_message')}))

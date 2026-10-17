@@ -551,3 +551,25 @@ A shallow clone may fetch that public commit read-only using the existing fetch
 pattern; no workflow change, credential or permission is added. Advancing this
 reviewed anchor itself requires independent review. A single-file change still
 faces the existing digest/version/reviewer/source registration validation.
+
+### Dashboard linked to the demo (OD2 piece 3)
+
+After the existing demo/live run, open `evidence/Dashboard.html`. It displays the
+measured numerators/denominators, formulas, counted epoch-namespaced records and
+links to the matching walkthrough steps. Header: SHA, image/runtime pins, exact
+G3 140/22/162 and scenario epochs. **SYNTHETIC P0 — not KPIs, no SLA targets, not
+pilot sign-off**. M6.4 metric meanings remain awaiting owner confirmation.
+
+To reproduce downloaded same-tip evidence, place Flow-A/B results, Demo results
+and walkthrough, and live-suite.xml in `evidence/`, then run
+`python3 scripts/dashboard.py --from-evidence`. It only renders: no harness wipe,
+scenario, database or external service is started. Both dashboard files reproduce
+byte-identically for the same inputs. The P0 report now validates the entire JSON
+and HTML, demo hashes and epochs, and hashes both outputs. See
+[dashboard formulas and reconciliation](docs/dashboard-formulas.md).
+
+Optional LOW-OD2P2-2 remains for independent review: making baseline_diff.py flag
+its own edits against its current fixed anchor would flag the implementing commit
+itself. No self-approval/anchor exception is introduced to turn that red check
+green. The existing baseline+registry co-change gate and hub-review requirement
+for changing its anchor remain intact; this piece leaves that script unchanged.

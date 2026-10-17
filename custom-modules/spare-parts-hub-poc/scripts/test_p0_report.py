@@ -111,7 +111,6 @@ class TestP0Report(unittest.TestCase):
         for key,source in demos.items():
             rows=source['measurements']['orders'] if key=='A' else [{'so_id':1,'state':'sale','reserved_qty':0}]
             for row in rows:row['requested_qty']=1
-            if key=='A':rows.append({'so_id':2,'state':'sale','requested_qty':1,'reserved_qty':0})
             shortage=2 if key=='A' else 1
             source['measurements'].update(orders=rows,stockout_so_ids=[shortage],
                 stockout_audits=[{'audit_id':1,'so_id':shortage,'action':'sale.reserve.stockout','outcome':'deny'}],backorder_picking_ids=[])
@@ -120,7 +119,10 @@ class TestP0Report(unittest.TestCase):
         save('Baseline-diff-review.json',{'reviewed_sha':REVIEWED,'commit':'fixture-tip','status':'PASS','changed_paths':[]})
         demo=build(demos,'fixture-tip',{'fixture':'pinned'});save('Demo-results.json',demo)
         (root/'Demo-walkthrough.md').write_text(markdown(demo))
-        save('Dashboard-results.json',calculate(demos,'fixture-tip'))
+        from dashboard import reconcile, render
+        dashboard=reconcile(demos,'fixture-tip',demo,markdown(demo),{'fixture':'pinned'},baseline['g3'],
+            {'tests':5,'failures':0,'errors':0,'skipped':0})
+        save('Dashboard-results.json',dashboard);(root/'Dashboard.html').write_text(render(dashboard))
         save('G2-request-results.json',g2);save('G3-authority-results.json',g3);save('Upgrade-results.json',self.upgrade());save('Retained-upgrade-results.json',self.retained())
 
     def test_report_fails_on_probe_mutation_shrink_or_no_contention(self):
@@ -159,6 +161,19 @@ class TestP0Report(unittest.TestCase):
                 elif mutation=='expected':data['steps'][0]['expected']['company_count']=2
                 else:(root/'Demo-walkthrough.md').write_text('tampered walkthrough')
                 path.write_text(json.dumps(data))
+                with patch('p0_report.ROOT',root),patch('p0_report.subprocess.check_output',return_value='fixture-tip\n'),contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(execute(root)['status'],'FAIL')
+
+    def test_report_rejects_dashboard_json_html_and_epoch_tampering(self):
+        for mutation in ('json','html','epoch'):
+            with self.subTest(mutation=mutation),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);self.report_fixture(root)
+                if mutation=='html':(root/'Dashboard.html').write_text('tampered')
+                else:
+                    path=root/'Dashboard-results.json';data=json.loads(path.read_text())
+                    if mutation=='json':data['metrics']['stockouts']=99
+                    else:data['epochs']['B']=data['epochs']['A']
+                    path.write_text(json.dumps(data))
                 with patch('p0_report.ROOT',root),patch('p0_report.subprocess.check_output',return_value='fixture-tip\n'),contextlib.redirect_stdout(io.StringIO()):
                     self.assertEqual(execute(root)['status'],'FAIL')
 
