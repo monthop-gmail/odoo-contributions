@@ -94,7 +94,11 @@ class TestP0Report(unittest.TestCase):
         def save(name,value):(root/name).write_text(json.dumps(value))
         save('expected-tests.json',['Fixture.test_smoke']);save('p0-evidence-baseline.json',baseline)
         save('p0-baseline-reviews.json',json.loads((Path(__file__).resolve().parents[1]/'p0-baseline-reviews.json').read_text()))
-        (root/'odoo-tests.log').write_text('Starting Fixture.test_smoke ...\n0 failed, 0 error(s)\n')
+        mail={'synthetic':True,'captured_messages':1,'real_smtp_calls':0,'bot_rfq_denied':True,'human_rfq_state':'sent'}
+        perf={'synthetic':True,'samples':[{'model':model,'own_documents':count,'foreign_candidates':1,
+            'returned':count,'sql_queries':3,'seconds':0.001} for model in ('mail.message','ir.attachment') for count in (2,10,30)]}
+        (root/'odoo-tests.log').write_text('Starting Fixture.test_smoke ...\n0 failed, 0 error(s)\n'+
+            'SPH_RFQ_CAPTURE '+json.dumps(mail)+'\nSPH_RULE_PERFORMANCE '+json.dumps(perf)+'\n')
         suite=ET.Element('testsuite',failures='0',errors='0',skipped='0')
         for name in ('g1_http','g2_race','g3_authority','flow_a','flow_b'):ET.SubElement(suite,'testcase',name=name)
         ET.ElementTree(suite).write(root/'live-suite.xml')

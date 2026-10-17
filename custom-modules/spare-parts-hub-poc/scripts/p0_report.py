@@ -83,6 +83,25 @@ def validate_live_evidence(g2,g3,baseline):
     return counts
 
 
+def leftover_evidence(log):
+    def measured(marker):
+        rows=[json.loads(line.split(marker+' ',1)[1]) for line in log.splitlines() if marker+' ' in line]
+        if len(rows)!=1:raise ValueError('Missing/duplicate '+marker)
+        return rows[0]
+    mail=measured('SPH_RFQ_CAPTURE');performance=measured('SPH_RULE_PERFORMANCE')
+    if (mail.get('synthetic') is not True or mail.get('captured_messages',0)<1 or
+            mail.get('real_smtp_calls')!=0 or mail.get('bot_rfq_denied') is not True or mail.get('human_rfq_state')!='sent'):
+        raise ValueError('Unsafe/incomplete captured RFQ evidence')
+    samples=performance['samples']
+    expected={(model,count) for model in ('mail.message','ir.attachment') for count in (2,10,30)}
+    if (performance.get('synthetic') is not True or len(samples)!=6 or
+            {(row['model'],row['own_documents']) for row in samples}!=expected or
+            any(row['returned']!=row['own_documents'] or row['foreign_candidates']!=1 or
+                row['sql_queries']<=0 or row['seconds']<0 for row in samples)):
+        raise ValueError('Incomplete/foreign-visible rule characterization')
+    return {'INFO-B7b-4':mail,'INFO-B7b-5':performance}
+
+
 def execute(directory=None):
     directory=Path(directory or ROOT/'evidence');directory.mkdir(exist_ok=True)
     commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
@@ -92,14 +111,14 @@ def execute(directory=None):
         'ci_run_url':'https://github.com/'+os.environ.get('GITHUB_REPOSITORY','monthop-gmail/odoo-contributions')+
             '/actions/runs/'+os.environ.get('GITHUB_RUN_ID','local'),
         'open_items':[{'id':'DN-B8-1','status':'OWNER DECISION NEEDED BEFORE P1',
-            'detail':'Picking ownership classification/narrowing for native warehouse; unchanged here.'},
-            {'id':'INFO-B7b-4/5','status':'BACKLOG','detail':'RFQ actual mail-send / rule performance.'}],
+            'detail':'Picking ownership classification/narrowing for native warehouse; unchanged here.'}],
         'boundary':'No staging/main/PR/merge/deploy/spend/credentials/real data; independent review still required.'}
     load=lambda name:json.loads((directory/name).read_text())
     try:
         expected=json.loads((ROOT/'expected-tests.json').read_text())
         validate_test_log((directory/'odoo-tests.log').read_text(),expected)
         report['bound']={'status':'PASS','executed_bindings':len(expected)}
+        report['leftover_findings']=leftover_evidence((directory/'odoo-tests.log').read_text())
         report['checks']=case_statuses(directory/'live-suite.xml')
         if set(report['checks'].values())!={'PASS'}:raise ValueError('A live case did not pass')
         fresh=load('Fresh-live-start.json')
