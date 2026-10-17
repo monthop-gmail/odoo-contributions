@@ -57,6 +57,7 @@ try:
         deny_count=observer['sph.authority.audit'].search_count([('res_model','=','purchase.order'),
             ('res_id','=',po_id),('actor_uid','=',seed['bot_uid']),('action','=','po.approve'),('outcome','=','deny')])
         assert deny_count>=1
+        receipts_after_bot_denial=po.picking_ids.ids
     for method in ('sph_review','button_confirm'):
         response=rpc('approver','purchase.order',method,[[po_id]])
         assert 'error' not in response and response.get('jsonrpc')=='2.0'
@@ -72,7 +73,15 @@ try:
             'bot_drafted_state':'draft','bot_confirm':'DENIED','durable_bot_deny_audit':True,
             'state_after_bot_denial':'draft','final_po_state':po.state,'receipt_ids':po.picking_ids.ids,
             'maker_uid':po.sph_maker_uid,'checker_uid':po.sph_reviewer_uid,'maker_checker_distinct':True,
-            'human_confirm_allow_audit':True}
+            'human_confirm_allow_audit':True,
+            'receipt_ids_after_bot_denial':receipts_after_bot_denial,
+            'receipt_states':[{'id':picking.id,'state':picking.state} for picking in po.picking_ids],
+            'completed_stock_moves':observer['stock.move'].search_count([('product_id','=',seed['product_id']),('state','=','done')]),
+            'invoice_ids':po.invoice_ids.ids,
+            'on_hand_quantity':sum(observer['stock.quant'].search([('product_id','=',seed['product_id']),
+                ('location_id','=',seed['location_id'])]).mapped('quantity'))}
+        assert all(row['state'] not in ('done','cancel') for row in result['receipt_states'])
+        assert result['completed_stock_moves']==0 and not result['invoice_ids'] and result['on_hand_quantity']==0
         stockout_audits=observer['sph.authority.audit'].search([
             ('res_model','=','sale.order'),('res_id','in',[order.id]),
             ('action','=','sale.reserve.stockout'),('outcome','=','deny')])
@@ -99,4 +108,7 @@ finally:
     if cleanup_failed and not scenario_failed:
         raise RuntimeError('Flow B session cleanup failed')
 result['sessions_cleaned']=True
+result['database']=env.cr.dbname
+result['company_count']=env['res.company'].search_count([])
+result['profile']='disposable-test-harness'
 print('SPH_FLOW_B_RESULT '+json.dumps(result),flush=True)

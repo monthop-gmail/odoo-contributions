@@ -106,4 +106,7 @@ finally:
     if cleanup_failed and not scenario_failed:
         raise RuntimeError('Flow A session cleanup failed')
 result['sessions_cleaned']=True
+result['database']=env.cr.dbname
+result['company_count']=env['res.company'].search_count([])
+result['profile']='disposable-test-harness'
 print('SPH_FLOW_A_RESULT '+json.dumps(result),flush=True)

@@ -1,5 +1,6 @@
 """One command: clean disposable harness -> synthetic Flow A -> evidence -> down."""
 import argparse
+import uuid
 import json
 import subprocess
 import sys
@@ -28,6 +29,7 @@ except Exception as error:
         raise RuntimeError('Flow A live assertions failed')
     result=json.loads(results[-1].split(' ',1)[1])
     result['commit']=subprocess.run(['git','rev-parse','HEAD'],cwd=ROOT,text=True,capture_output=True,check=True).stdout.strip()
+    result['epoch_id']=uuid.uuid4().hex
     result['pins']=json.loads((ROOT/'version-pins.json').read_text())
     evidence=ROOT/'evidence';evidence.mkdir(exist_ok=True)
     (evidence/'Flow-A-results.json').write_text(json.dumps(result,indent=2)+'\n')
