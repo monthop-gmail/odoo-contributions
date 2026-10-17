@@ -34,7 +34,7 @@ class TestP0Leftovers(TransactionCase):
         server=type(self.env['ir.mail_server'])
         with patch('smtplib.SMTP',side_effect=AssertionError('Real SMTP forbidden')) as smtp,\
                 patch('smtplib.SMTP_SSL',side_effect=AssertionError('Real SMTP forbidden')) as ssl,\
-                patch.object(server,'connect',return_value=MagicMock(name='fixture_transport')),\
+                patch.object(server,'_connect__',return_value=MagicMock(name='fixture_transport')),\
                 patch.object(server,'send_email',side_effect=capture):
             wizard=self.env['mail.compose.message'].with_user(human).with_context(context).create({})
             wizard.action_send_mail()
